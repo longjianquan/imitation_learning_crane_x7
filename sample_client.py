@@ -1,11 +1,18 @@
 import socket
 
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 host = '127.0.0.1'
-s.connect((host, 10051))
-s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+serverSocket.connect((host, 10051))
 
-msg = s.recv(1024)
+msg = serverSocket.recv(1024)
 print(msg.decode('utf-8'))
 
-s.send(bytes('Welcome to the server!', 'utf-8'))
+line = ''
+while line != 'exit':
+    line = input('>>> ')
+    serverSocket.send(line.encode('utf-8'))
+    responce = serverSocket.recv(4096).decode()
+    print(f'responce: {responce}')
+
+serverSocket.close()
+print('Dissconnect from server')
