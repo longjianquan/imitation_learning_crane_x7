@@ -1,5 +1,10 @@
 import socket
 
+import numpy as np
+import torch
+
+from model.SpatialAE import SpatialAE
+from model.LSTMBlock import LSTMBlock
 
 class SocketServer():
     def __init__(
@@ -47,36 +52,51 @@ def callback(msg: str) -> str:
     return f'receive "{msg}"'
 
 
-import numpy as np
-import torch
-
-class NNServer(SocketServer):
+class AE_LSTM_Server(SocketServer):
     def __init__(
         self,
+        path_AE_param: str,
+        path_LSTM_param: str,
         host: str = '127.0.0.1',
         port: int = 10051,
-        model: torch.nn.Module = None,
         device: torch.device = torch.device('cpu'),
         mean: np.ndarray = None,
         std: np.ndarray = None,
         input_dim: int = 21,
-        getImage: callable() = None,
+        getImage: callable = None,
     ):
-        super().__init__(host, port)
-
-        self.model = model
+        # self.model = model
         self.device = device
         self.mean = mean if mean is not None else np.zeros(input_dim)
         self.std = std if std is not None else np.ones(input_dim)
         self.input_dim = input_dim
+        self.getImage = getImage
 
-        self.h = torch.zeros((model.LSTM_layer_num, 1, model.LSTM_dim)).to(device)
-        self.c = torch.zeros((model.LSTM_layer_num, 1, model.LSTM_dim)).to(device)
+        # self.h = torch.zeros((model.LSTM_layer_num, 1, model.LSTM_dim)).to(device)
+        # self.c = torch.zeros((model.LSTM_layer_num, 1, model.LSTM_dim)).to(device)
+
+        # load Spatial Auto Encoder
+        self.spatialAE = SpatialAE()
+        state_dict = self.load_model_param(path_AE_param)
+        self.spatialAE.load_state_dict(state_dict)
+
+        # load LSTM
+        image_feature_dim = 32
+        self.lstm = LSTMBlock(
+            input_dim=input_dim+image_feature_dim,
+            output_dim=input_dim,
+            LSTM_dim=100,
+            LSTM_layer_num=1,
+        )
+        state_dict = self.load_model_param(path_LSTM_param)
+        self.lstm.load_state_dict(state_dict)
+
+        super().__init__(host, port)
 
     def standby(self):
         return super().standby(self.NN_callback)
 
-    def NN_callback(self, msg:str) -> str:
+    def NN_callback(self, msg: str) -> str:
         # return f'receive "{msg}"'
         data = np.fromstring(msg, dtype=np.float32 , sep=' ')
         # state_dim = 21
@@ -122,10 +142,31 @@ class NNServer(SocketServer):
 
         return state_hat.tostring()
 
+    def load_model_param(self, filepath):
+        state_dict = torch.load(filepath, map_location=self.device)
+        from collections import OrderedDict
+        new_state_dict = OrderedDict()
+        for k, v in state_dict.items():
+            if 'module' in k:
+                k = k.replace('module.', '')
+            new_state_dict[k] = v
+        return new_state_dict
+
 
 def main():
-    server = SocketServer()
-    server.standby(callback=callback)
+    # pytorch device setting
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print('device:', device)
+
+    # server = SocketServer()
+    # server.standby(callback=callback)
+
+    server = AE_LSTM_Server(
+        device=device,
+        path_AE_param='./model_param/SpatialAE_param.pt',
+        path_LSTM_param='./model_param/LSTM_param.pt',
+    )
+    server.standby()
 
 
 if __name__ == '__main__':
