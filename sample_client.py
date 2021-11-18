@@ -1,4 +1,6 @@
 import socket
+import time
+import numpy as np
 
 serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 host = '127.0.0.1'
@@ -10,9 +12,14 @@ print(msg.decode('utf-8'))
 line = ''
 while line != 'exit':
     line = input('>>> ')
+    if line == '':
+        # line = np.zeros(21).tobytes()
+        line = ' '.join(['0'] * 21)
+    print(f'send: {line}')
     serverSocket.send(line.encode('utf-8'))
     responce = serverSocket.recv(4096).decode()
     print(f'responce: {responce}')
+    time.sleep(40)
 
 serverSocket.close()
 print('Dissconnect from server')
