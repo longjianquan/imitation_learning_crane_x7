@@ -2,9 +2,12 @@ import socket
 
 import numpy as np
 import torch
+from torchvision import transforms
+import cv2
 
 from model.SpatialAE import SpatialAE
 from model.LSTMBlock import LSTMBlock
+
 
 class SocketServer():
     def __init__(
@@ -39,8 +42,9 @@ class SocketServer():
                 if msg == 'exit':
                     break
 
-                output = callback(msg)
-                self.clientSocket.send(output.encode('utf-8'))
+                output = callback(msg).encode('utf-8')
+                self.clientSocket.send(output)
+                print(f'send "{msg}"')
 
         finally:
             self.socket.close()
@@ -50,6 +54,22 @@ class SocketServer():
 
 def callback(msg: str) -> str:
     return f'receive "{msg}"'
+
+
+class ImageServer():
+    def __init__(self, image_size: int = 64):
+        self.cap = cv2.VideoCapture(0)
+
+        self.transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Resize(image_size),
+            transforms.CenterCrop(image_size),
+        ])
+
+    def getImage(self):
+        ret, frame = self.cap.read()
+        frame = self.transform(frame)
+        return frame
 
 
 class AE_LSTM_Server(SocketServer):
@@ -79,6 +99,7 @@ class AE_LSTM_Server(SocketServer):
         self.spatialAE = SpatialAE()
         state_dict = self.load_model_param(path_AE_param)
         self.spatialAE.load_state_dict(state_dict)
+        self.image_encoder = self.spatialAE.encoder
 
         # load LSTM
         image_feature_dim = 32
@@ -121,7 +142,8 @@ class AE_LSTM_Server(SocketServer):
         print('state shape:', state.shape)
         print('image shape:', image.shape)
 
-        state_hat, image_hat, (self.h, self.c) = self.model(state, image, (self.h, self.c))
+        image_feature = self.image_encoder(image)
+        state_hat, image_hat, (self.h, self.c) = self.lstm(state, image_feature, (self.h, self.c))
         # state_hat, image_hat, _, _, (h, c) = model(state, image, (h, c))
 
         # print(h, c)
@@ -161,10 +183,13 @@ def main():
     # server = SocketServer()
     # server.standby(callback=callback)
 
+    imageServer = ImageServer()
+
     server = AE_LSTM_Server(
         device=device,
         path_AE_param='./model_param/SpatialAE_param.pt',
         path_LSTM_param='./model_param/LSTM_param.pt',
+        getImage=imageServer.getImage,
     )
     server.standby()
 
