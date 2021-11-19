@@ -8,11 +8,14 @@ serverSocket.connect((host, 10051))
 msg = serverSocket.recv(1024)
 print(msg.decode('utf-8'))
 
+start = time.time()
+
 line = ''
 while line != 'exit':
     line = input('>>> ')
     if line == '':
         line = ' '.join(['0.0'] * 21)
+        line += f' {time.time() - start}'
     print(f'send: {line}')
     serverSocket.send(line.encode('utf-8'))
     responce = serverSocket.recv(4096).decode()
