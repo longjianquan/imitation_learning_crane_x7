@@ -42,9 +42,12 @@ class SocketServer():
                 if msg == 'exit':
                     break
 
+                # calculate callback
                 output = callback(msg).encode('utf-8')
+
+                # send message
                 self.clientSocket.send(output)
-                print(f'send "{msg}"')
+                print(f'send "{output}"')
 
         finally:
             self.socket.close()
@@ -92,14 +95,14 @@ class AE_LSTM_Server(SocketServer):
         self.input_dim = input_dim
         self.getImage = getImage
 
-        # self.h = torch.zeros((model.LSTM_layer_num, 1, model.LSTM_dim)).to(device)
-        # self.c = torch.zeros((model.LSTM_layer_num, 1, model.LSTM_dim)).to(device)
 
         # load Spatial Auto Encoder
         self.spatialAE = SpatialAE()
         state_dict = self.load_model_param(path_AE_param)
         self.spatialAE.load_state_dict(state_dict)
+        self.spatialAE = self.spatialAE.to(device)
         self.image_encoder = self.spatialAE.encoder
+        self.image_decoder = self.spatialAE.decoder
 
         # load LSTM
         image_feature_dim = 32
@@ -111,6 +114,10 @@ class AE_LSTM_Server(SocketServer):
         )
         state_dict = self.load_model_param(path_LSTM_param)
         self.lstm.load_state_dict(state_dict)
+        self.lstm = self.lstm.to(device)
+
+        self.h = torch.zeros((self.lstm.LSTM_layer_num, 1, self.lstm.LSTM_dim)).to(device)
+        self.c = torch.zeros((self.lstm.LSTM_layer_num, 1, self.lstm.LSTM_dim)).to(device)
 
         super().__init__(host, port)
 
@@ -137,14 +144,16 @@ class AE_LSTM_Server(SocketServer):
         image = image.to(self.device)
 
         state = state.unsqueeze(0).unsqueeze(0)
-        image = image.unsqueeze(0).unsqueeze(0)
 
         print('state shape:', state.shape)
         print('image shape:', image.shape)
 
+        image = image.unsqueeze(0)
         image_feature = self.image_encoder(image)
-        state_hat, image_hat, (self.h, self.c) = self.lstm(state, image_feature, (self.h, self.c))
+        state = torch.cat([state, image_feature.unsqueeze(0)], dim=2)
+        state_hat, (self.h, self.c) = self.lstm(state, (self.h, self.c))
         # state_hat, image_hat, _, _, (h, c) = model(state, image, (h, c))
+        image_hat = self.image_decoder(image_feature, image_size=64)
 
         # print(h, c)
 
@@ -161,8 +170,12 @@ class AE_LSTM_Server(SocketServer):
 
         # os.makedirs('../repro/video_pred0/', exist_ok=True)
         # image_hat_pil.save('../repro/video_pred0/pred{:.3f}.jpg'.format(data[state_dim]))
-
-        return state_hat.tostring()
+        
+        # to string
+        msg = ''
+        for y_element in state_hat[:21]:
+            msg += f'{y_element.item()},'
+        return msg
 
     def load_model_param(self, filepath):
         state_dict = torch.load(filepath, map_location=self.device)

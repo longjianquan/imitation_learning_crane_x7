@@ -12,12 +12,11 @@ line = ''
 while line != 'exit':
     line = input('>>> ')
     if line == '':
-        line = ' '.join(['0'] * 21)
+        line = ' '.join(['0.0'] * 21)
     print(f'send: {line}')
     serverSocket.send(line.encode('utf-8'))
     responce = serverSocket.recv(4096).decode()
     print(f'responce: {responce}')
-    time.sleep(40)
 
 serverSocket.close()
 print('Dissconnect from server')
