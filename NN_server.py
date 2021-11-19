@@ -4,6 +4,8 @@ import numpy as np
 import torch
 from torchvision import transforms
 import cv2
+from PIL import Image
+import os
 
 from model.SpatialAE import SpatialAE
 from model.LSTMBlock import LSTMBlock
@@ -69,8 +71,11 @@ class ImageServer():
             transforms.CenterCrop(image_size),
         ])
 
+        self.getImage()
+
     def getImage(self):
         ret, frame = self.cap.read()
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         frame = self.transform(frame)
         return frame
 
@@ -87,14 +92,14 @@ class AE_LSTM_Server(SocketServer):
         std: np.ndarray = None,
         input_dim: int = 21,
         getImage: callable = None,
+        output_dir: str = './result',
     ):
-        # self.model = model
         self.device = device
         self.mean = mean if mean is not None else np.zeros(input_dim)
         self.std = std if std is not None else np.ones(input_dim)
         self.input_dim = input_dim
         self.getImage = getImage
-
+        self.frames = []
 
         # load Spatial Auto Encoder
         self.spatialAE = SpatialAE()
@@ -118,6 +123,9 @@ class AE_LSTM_Server(SocketServer):
 
         self.h = torch.zeros((self.lstm.LSTM_layer_num, 1, self.lstm.LSTM_dim)).to(device)
         self.c = torch.zeros((self.lstm.LSTM_layer_num, 1, self.lstm.LSTM_dim)).to(device)
+
+        self.output_dir = output_dir
+        os.makedirs(output_dir, exist_ok=True)
 
         super().__init__(host, port)
 
@@ -152,10 +160,7 @@ class AE_LSTM_Server(SocketServer):
         image_feature = self.image_encoder(image)
         state = torch.cat([state, image_feature.unsqueeze(0)], dim=2)
         state_hat, (self.h, self.c) = self.lstm(state, (self.h, self.c))
-        # state_hat, image_hat, _, _, (h, c) = model(state, image, (h, c))
-        image_hat = self.image_decoder(image_feature, image_size=64)
-
-        # print(h, c)
+        image_hat = self.image_decoder(image_feature, image_size=image.shape[-1])
 
         state_hat = state_hat.cpu().detach().numpy().flatten()
         state_hat = state_hat * self.std + self.mean
@@ -165,15 +170,15 @@ class AE_LSTM_Server(SocketServer):
         image = image.transpose(1, 2, 0)
         image_hat = image_hat.squeeze().cpu().detach().numpy()
         image_hat = image_hat.transpose(1, 2, 0)
-        image_hat = np.concatenate([image, image_hat], axis=1)
-        # image_hat_pil = Image.fromarray((225 * image_hat).astype(np.uint8), mode=None)
-
-        # os.makedirs('../repro/video_pred0/', exist_ok=True)
-        # image_hat_pil.save('../repro/video_pred0/pred{:.3f}.jpg'.format(data[state_dim]))
+        frame = np.concatenate([image, image_hat], axis=1)
+        # self.writer.writeFrame(frame)
+        # self.frames.append((255 * frame).astype(np.uint8))
+        frame = Image.fromarray((225 * frame).astype(np.uint8), mode=None)
+        frame.save(self.output_dir + f'/pred{data[-1]:.3f}.jpg')
         
         # to string
         msg = ''
-        for y_element in state_hat[:21]:
+        for y_element in state_hat[:self.input_dim]:
             msg += f'{y_element.item()},'
         return msg
 
@@ -187,6 +192,17 @@ class AE_LSTM_Server(SocketServer):
             new_state_dict[k] = v
         return new_state_dict
 
+    def save_gif(self, path: str, duration: int = 40):
+        frames = [Image.fromarray(frame).quantize(colors=256, method=0, dither=1)
+            for frame in self.frames]
+        frames[0].save(
+            path,
+            save_all=True,
+            append_images=frames[1:],
+            duration=duration,
+            loop=0
+        )
+
 
 def main():
     # pytorch device setting
@@ -196,7 +212,7 @@ def main():
     # server = SocketServer()
     # server.standby(callback=callback)
 
-    imageServer = ImageServer()
+    imageServer = ImageServer(image_size=128)
 
     server = AE_LSTM_Server(
         device=device,
@@ -205,6 +221,7 @@ def main():
         getImage=imageServer.getImage,
     )
     server.standby()
+    # server.save_gif('result.gif')
 
 
 if __name__ == '__main__':
