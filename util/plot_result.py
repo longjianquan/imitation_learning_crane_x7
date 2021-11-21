@@ -109,9 +109,14 @@ def make_generated_image_gif(images_ans, images_hat, path):
     save_gif(frames, path, duration=40)
 
 
-def plot_latent_space(fig, zs, labels, epoch=0):
-    zs = torch2numpy(zs)
-    labels = torch2numpy(labels)
+def plot_latent_space(
+    fig: mpl.figure.Figure,
+    zs: np.ndarray,
+    labels: np.ndarray,
+    epoch: int = 0,
+):
+    # zs = torch2numpy(zs)
+    # labels = torch2numpy(labels)
 
     if zs.shape[1] > 2:
         pca = PCA()
@@ -281,7 +286,12 @@ def plot_losses(fig, train_loss, valid_loss,
     fig.align_labels()
 
 
-def plot_images(fig, images, epoch=0, feature_points=[]):
+def plot_images(
+    fig: mpl.figure.Figure,
+    images: np.ndarray,
+    epoch: int = 0,
+    feature_points: list = [],
+):
     n_image, height, width, channel = images.shape
     col = np.ceil(np.sqrt(n_image)).astype(np.int)
     row = col

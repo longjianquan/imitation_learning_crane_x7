@@ -3,6 +3,10 @@ import wandb
 import time
 import os
 
+import matplotlib.pyplot as plt
+import seaborn as sns
+sns.set()
+
 import sys
 sys.path.append('.')
 from util.print_progress_bar import print_progress_bar
@@ -29,6 +33,12 @@ class Tranier():
         self.wandb_flag = wandb_flag
         self.early_stopping_count = early_stopping_count
 
+        self.train_losses = []
+        self.valid_losses = []
+        self.total_elapsed_time = 0
+        self.early_stopping_counter = 0
+        self.best_test = 1e10
+
         # device setting
         self.device = torch.device(f'cuda:{gpu_num[0]}'
             if torch.cuda.is_available() else 'cpu')
@@ -42,9 +52,11 @@ class Tranier():
         self.scaler = torch.cuda.amp.GradScaler()
         torch.backends.cudnn.benchmark = True
 
+        # make directory
         if not os.path.exists(out_dir):
             os.makedirs(out_dir)
         print(f'save to {out_dir}')
+
 
     def train(self, n_epochs: int, callback: callable(int) = None):
         for epoch in range(n_epochs + 1):
@@ -64,7 +76,7 @@ class Tranier():
 
                 running_loss += loss.item()
 
-                header = 'epoch: {}'.format(epoch)
+                header = f'epoch: {epoch}'
                 print_progress_bar(
                     i, len(self.train_loader), end='', header=header)
             train_loss = running_loss / len(self.train_loader)
@@ -74,21 +86,21 @@ class Tranier():
             running_loss = 0.0
             self.model.eval()
             for batch in self.valid_loader:
-                with torch.zero_grad():
-                    loss = self.calc_loss(batch)
+                with torch.no_grad():
+                    loss = self.calc_loss(batch, valid=True)
                 running_loss += loss.item()
             valid_loss = running_loss / len(self.valid_loader)
             self.valid_losses.append(valid_loss)
 
-            # log
+            # print
             end = time.time()
             elapsed_time = end - start
             self.total_elapsed_time += elapsed_time
-            log = '\r\033[K' + 'epoch: {}'.format(epoch)
-            log += '  train loss: {:.6f}'.format( train_loss)
-            log += '  valid loss: {:.6f}'.format(valid_loss)
-            log += '  elapsed time: {:.3f}'.format(elapsed_time)
-            log += '  early stopping: {}'.format(early_stopping_counter)
+            log = '\r\033[K' + f'epoch: {epoch}'
+            log += f'  train loss: {train_loss:.6f}'
+            log += f'  valid loss: {valid_loss:.6f}'
+            log += f'  elapsed time: {elapsed_time:.3f}'
+            log += f'  early stopping: {self.early_stopping_counter}'
             print(log)
 
             # save model
@@ -98,7 +110,7 @@ class Tranier():
                     os.mkdir(encoder_param_dir)
                 path_encoder_param = os.path.join(
                     encoder_param_dir,
-                    'model_param_{:06d}.pt'.format(epoch))
+                    f'model_param_{epoch:06d}.pt')
                 torch.save(self.model.state_dict(), path_encoder_param)
 
                 if self.wandb_flag:
@@ -123,9 +135,9 @@ class Tranier():
                 })
                 wandb.save(path_checkpoint)
 
-            if valid_loss < best_test:
-                best_test = valid_loss
-                early_stopping_counter = 0
+            if valid_loss < self.best_test:
+                self.best_test = valid_loss
+                self.early_stopping_counter = 0
 
                 # save model
                 path_model_param_best = os.path.join(
@@ -136,11 +148,20 @@ class Tranier():
 
             else:
                 # Early Stopping
-                early_stopping_counter += 1
-                if early_stopping_counter >= self.early_stopping_count:
+                self.early_stopping_counter += 1
+                if self.early_stopping_counter >= self.early_stopping_count:
                     print('Early Stopping!')
                     break
 
+            # plot loss
+            plt.clf()
+            plt.plot(self.train_losses, label='train')
+            plt.plot(self.valid_losses, label='valid')
+            plt.legend()
+            plt.xlabel('Epoch')
+            plt.ylabel('Loss')
+            plt.savefig(os.path.join(self.out_dir, 'loss.png'))
+
             callback(epoch)
 
-        print('total elapsed time: {} [s]'.format(self.total_elapsed_time))
+        print(f'total elapsed time: {self.total_elapsed_time} [s]')

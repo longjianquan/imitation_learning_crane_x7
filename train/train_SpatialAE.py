@@ -1,4 +1,7 @@
 import os
+from typing import Tuple
+from torchvision import transforms
+from torchvision.transforms.transforms import ColorJitter
 import wandb
 
 import torch.nn as nn
@@ -15,6 +18,15 @@ from dataset.image_dataset import ImageDataset
 from dataset.fast_dataloader import FastDataLoader
 from model.SpatialAE import SpatialAE
 from util.plot_result import *
+
+
+class AddGaussianNoise():
+    def __init__(self, mean: float = 0.0, std: float = 0.1):
+        self.std = std
+        self.mean = mean
+
+    def __call__(self, tensor: torch.Tensor):
+        return tensor + torch.randn_like(tensor) * self.std + self.mean
 
 
 class SpatialAETrainer(Tranier):
@@ -82,33 +94,42 @@ class SpatialAETrainer(Tranier):
         self.valid_encoded = []
         self.valid_label = []
 
+        self.transform = transforms.Compose([
+            AddGaussianNoise(mean=0.0, std=0.1),
+            ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5),
+        ])
+
         if wandb_flag:
             wandb.init(project='AutoEncoder')
             config = wandb.config
-            config.data_path = args.data_path
-            config.epoch = args.epoch
-            config.batch_size = args.batch_size
-            config.learning_rate = args.learning_rate
+            config.data_path = data_path
+            config.batch_size = batch_size
+            config.learning_rate = learning_rate
             config.train_data_num = len(train_dataset)
             config.valid_data_num = len(valid_dataset)
             wandb.watch(model)
 
 
-    def calc_loss(self, batch):
+    def calc_loss(
+        self,
+        batch: Tuple[torch.Tensor, torch.Tensor],
+        valid: bool = False,
+    ) -> torch.Tensor:
         image, label = batch
         self.image_ans = image.to(self.device)
-        image_noise = self.image_ans + 0.1 * torch.randn_like(self.image_ans)
 
-        self.image_hat, image_feature = self.model(image_noise)
+        image_input = self.transform(self.image_ans)
+        self.image_hat, image_feature = self.model(image_input)
         loss = self.loss_fn(self.image_ans, self.image_hat)
 
         # save data for plot
-        self.valid_encoded.append(image_feature.cpu().detach().numpy())
-        self.valid_label.append(label.cpu().detach().numpy())
+        if valid:
+            self.valid_encoded.append(image_feature.cpu().detach().numpy())
+            self.valid_label.append(label.cpu().detach().numpy())
 
         return loss
 
-    def plot_results(self, epoch):
+    def plot_results(self, epoch: int):
         if epoch % 10 == 0:
             # reconstructed image
             image_ans = formatImages(self.image_ans)
@@ -130,8 +151,8 @@ class SpatialAETrainer(Tranier):
             self.fig_latent_space.clf()
             plot_latent_space(
                 self.fig_latent_space,
-                self.valid_encoded,
-                self.valid_label,
+                np.concatenate(self.valid_encoded, axis=0),
+                np.concatenate(self.valid_label, axis=0),
                 epoch=epoch,
             )
             path_latent_space = os.path.join(self.out_dir, 'latent_space.png')
@@ -162,6 +183,9 @@ class SpatialAETrainer(Tranier):
                     'feature_map': wandb.Image(self.fig_feature_map),
                 })
                 wandb.save(path_reconstructed_image_png)
+
+        self.valid_encoded = []
+        self.valid_label = []
 
     def train(self, n_epochs: int):
         return super().train(n_epochs, callback=self.plot_results)

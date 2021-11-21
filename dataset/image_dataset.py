@@ -12,17 +12,26 @@ import numpy as np
 
 
 class ImageDataset(Dataset):
-    def __init__(self, datafolder, data_num=None, train=True, split_ratio=0.8,
-                 image_size=64, target_type='task'):
+    def __init__(
+        self,
+        datafolder: str,
+        data_num: int = None,
+        train: bool = True,
+        split_ratio: float = 0.8,
+        image_size: int = 64,
+        target_type: str = 'task',
+    ):
         self.image_size = image_size
-        self.transform = transforms.Compose([
-            transforms.ColorJitter(
-                brightness=(0.2, 3.8),
-                contrast=(0.2, 3.8),
-                saturation=0.5,
-                hue=0.5,
-            ),
-        ])
+        # self.transform = transforms.Compose([
+        #     transforms.ColorJitter(
+        #         # brightness=(0.2, 3.8),
+        #         # contrast=(0.2, 3.8),
+        #         brightness=0.5,
+        #         contrast=0.5,
+        #         saturation=0.5,
+        #         # hue=0.5,
+        #     ),
+        # ])
 
         image_list = []
         label_list = []
@@ -42,15 +51,21 @@ class ImageDataset(Dataset):
 
             print('loading {} data from {}'.format(len(paths), folder))
 
-            filenames = [os.path.splitext(os.path.basename(path))[0] for path in paths]
-            filenums = [int(re.sub(r'\D', '', filename)) for filename in filenames]
+            filenames = [
+                os.path.splitext(os.path.basename(path))[0] for path in paths]
+            filenums = [
+                int(re.sub(r'\D', '', filename)) for filename in filenames]
 
             for filenum in tqdm(filenums):
                 image_folder_path = '{}/color/data{}'.format(folder, filenum)
-                image_paths = glob.glob(os.path.join(image_folder_path, '*.png'))
+                image_paths = glob.glob(os.path.join(
+                    image_folder_path, '*.png'))
 
-                image_names = [os.path.splitext(os.path.basename(path))[0] for path in image_paths]
-                image_times = sorted([float(re.sub(r'\D.\D', '', name)) for name in image_names])
+                image_names = [
+                    os.path.splitext(os.path.basename(path))[0]
+                    for path in image_paths]
+                image_times = sorted([
+                    float(re.sub(r'\D.\D', '', name)) for name in image_names])
                 image = self._load_images(image_paths)
                 image_list.extend(image)
 
@@ -82,25 +97,27 @@ class ImageDataset(Dataset):
 
         print('image shape:', self.image.shape)
         print('label shape:', self.label.shape)
-        print('image data size: {} [MiB]'.format(self.image.detach().numpy().copy().__sizeof__()/1.049e+6))
-        print('label data size: {} [MiB]'.format(self.label.detach().numpy().copy().__sizeof__()/1.049e+6))
+        print('image data size: {} [MiB]'.format(
+            self.image.detach().numpy().copy().__sizeof__()/1.049e+6))
+        print('label data size: {} [MiB]'.format(
+            self.label.detach().numpy().copy().__sizeof__()/1.049e+6))
 
     def __len__(self):
         return len(self.image)
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int):
         image = self.image[idx]
-        image = self.transform(image)
+        # image = self.transform(image)
         return image, self.label[idx]
 
-    def _load_images(self, image_paths):
+    def _load_images(self, image_paths: list):
         transform = transforms.Compose([
             transforms.ToTensor(),
             transforms.Resize(self.image_size),
             transforms.CenterCrop(self.image_size),
         ])
 
-        def load_one_frame(idx):
+        def load_one_frame(idx: int):
             if not os.path.exists(image_paths[idx]):
                 return
             image = Image.open(image_paths[idx])
