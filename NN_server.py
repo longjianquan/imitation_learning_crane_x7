@@ -175,7 +175,7 @@ class AE_LSTM_Server(SocketServer):
         # self.frames.append((255 * frame).astype(np.uint8))
         frame = Image.fromarray((225 * frame).astype(np.uint8), mode=None)
         frame.save(self.output_dir + f'/pred{data[-1]:.3f}.jpg')
-        
+
         # to string
         msg = ''
         for y_element in state_hat[:self.input_dim]:
