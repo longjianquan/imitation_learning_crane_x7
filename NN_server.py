@@ -160,7 +160,8 @@ class AE_LSTM_Server(SocketServer):
         image_feature = self.image_encoder(image)
         state = torch.cat([state, image_feature.unsqueeze(0)], dim=2)
         state_hat, (self.h, self.c) = self.lstm(state, (self.h, self.c))
-        image_hat = self.image_decoder(image_feature, image_size=image.shape[-1])
+        image_hat = self.image_decoder(
+            image_feature, image_size=image.shape[-1])
 
         state_hat = state_hat.cpu().detach().numpy().flatten()
         state_hat = state_hat * self.std + self.mean

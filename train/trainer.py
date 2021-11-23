@@ -58,7 +58,11 @@ class Tranier():
         print(f'save to {out_dir}')
 
 
-    def train(self, n_epochs: int, callback: callable(int) = None):
+    def train(
+        self,
+        n_epochs: int,
+        callback: callable(int) = lambda x: None,
+    ):
         for epoch in range(n_epochs + 1):
             start = time.time()
 

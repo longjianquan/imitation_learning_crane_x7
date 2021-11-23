@@ -165,14 +165,18 @@ class MotionImageDataset(Dataset):
 
         # for pytorch dataloader
         if type(idx) == int:
-            state_s = state_s.unsqueeze(0)
-            state_m = state_m.unsqueeze(0)
-            image = image.unsqueeze(0)
-
-        x_state = state_s[:, :-1].clone()
-        x_image = image[:, :-1].clone()
-        y_state = state_m[:, 1:]
-        y_image = image[:, 1:]
+            # state_s = state_s.unsqueeze(0)
+            # state_m = state_m.unsqueeze(0)
+            # image = image.unsqueeze(0)
+            x_state = state_s[:-1].clone()
+            x_image = image[:-1].clone()
+            y_state = state_m[1:]
+            y_image = image[1:]
+        else:
+            x_state = state_s[:, :-1].clone()
+            x_image = image[:, :-1].clone()
+            y_state = state_m[:, 1:]
+            y_image = image[:, 1:]
 
         # add noise to input data
         if self.train:
