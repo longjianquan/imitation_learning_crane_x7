@@ -12,8 +12,9 @@ sns.set()
 import sys
 sys.path.append('.')
 from train.trainer import Tranier
-from model.SpatialAE import SpatialAE
-from dataset.motion_image_dataset import MotionImageDataset
+# from model.SpatialAE import SpatialAE
+# from dataset.motion_image_dataset import MotionImageDataset
+from dataset.motion_dataset import MotionDataset
 from dataset.fast_dataloader import FastDataLoader
 from model.LSTMImitation import LSTMImitation
 from util.plot_result import *
@@ -32,27 +33,27 @@ class LSTMTrainer(Tranier):
     ):
         self.out_dir = out_dir
         self.loss_fn = nn.MSELoss()
-        self.fig_state = plt.figure(figsize=(20, 10))
+        self.fig_state = plt.figure(figsize=(20, 20))
 
-        image_encoder = SpatialAE(
-            feature_point_num=16,
-            image_size=args.image_size,
-        )
-        image_encoder.load_state_dict(torch.load(
-            './model_param/SpatialAE_param.pt'))
+        # image_encoder = SpatialAE(
+        #     feature_point_num=16,
+        #     image_size=args.image_size,
+        # )
+        # image_encoder.load_state_dict(torch.load(
+        #     './model_param/SpatialAE_param.pt'))
 
-        train_dataset = MotionImageDataset(
+        train_dataset = MotionDataset(
             data_path,
             train=True,
-            image_size=image_size,
-            image_encoder=image_encoder.encoder,
+            # image_size=image_size,
+            # image_encoder=image_encoder.encoder,
             normalization=False,
         )
-        valid_dataset = MotionImageDataset(
+        valid_dataset = MotionDataset(
             data_path,
             train=False,
-            image_size=image_size,
-            image_encoder=image_encoder.encoder,
+            # image_size=image_size,
+            # image_encoder=image_encoder.encoder,
             normalization=False,
         )
 

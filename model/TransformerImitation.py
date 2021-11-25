@@ -58,4 +58,4 @@ class TransformerImitation(nn.Module):
         # print(y)
         y = y.permute(1, 0, 2) # [batch_size, seq_len, embedding_dim]
 
-        return y[:, -1]
+        return y
