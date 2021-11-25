@@ -28,7 +28,6 @@ class TransformerTrainer(Tranier):
         learning_rate: float,
         wandb_flag: bool,
         gpu_num: list = [0],
-        early_stopping_count: int = 1000,
     ):
         image_encoder = SpatialAE(
             feature_point_num=16,
@@ -42,12 +41,14 @@ class TransformerTrainer(Tranier):
             train=True,
             image_size=image_size,
             image_encoder=image_encoder.encoder,
+            normalization=False,
         )
         valid_dataset = MotionImageDataset(
             data_path,
             train=False,
             image_size=image_size,
             image_encoder=image_encoder.encoder,
+            normalization=False,
         )
 
         train_loader = FastDataLoader(
@@ -78,7 +79,6 @@ class TransformerTrainer(Tranier):
             out_dir=out_dir,
             wandb_flag=wandb_flag,
             gpu_num=gpu_num,
-            early_stopping_count=early_stopping_count,
         )
 
         # figure

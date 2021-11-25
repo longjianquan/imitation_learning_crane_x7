@@ -18,7 +18,7 @@ class PositionalEncoding(nn.Module):
         pe[:, 1::2] = torch.cos(position * div_term)
         pe = pe.unsqueeze(0)
         self.register_buffer('pe', pe)
-        print(pe.shape)
+        # print(pe.shape)
 
     def forward(self, x: Tensor) -> Tensor:
         """
@@ -53,9 +53,9 @@ class TransformerImitation(nn.Module):
         """
         x = self.pos_encoder(x)
         x = x.permute(1, 0, 2) # [seq_len, batch_size, embedding_dim]
-        print(x)
+        # print(x)
         y = self.transformer_encoder(x, mask=mask)
-        print(y)
+        # print(y)
         y = y.permute(1, 0, 2) # [batch_size, seq_len, embedding_dim]
 
-        return y
+        return y[:, -1]

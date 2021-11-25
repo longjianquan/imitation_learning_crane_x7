@@ -33,6 +33,10 @@ class MotionImageDataset(Dataset):
         image_idx_list = []
 
         folders = glob.glob('{}/*'.format(datafolder))
+
+        # temporary
+        folders = folders[:1]
+
         image_idx = 0
         for folder in folders:
             paths = glob.glob('{}/motion/*.csv'.format(folder))
@@ -140,6 +144,7 @@ class MotionImageDataset(Dataset):
         state_m = self.state_m.reshape(batch_size * steps, -1)
         self.mean = torch.mean(state_m, axis=0, keepdims=True)
         self.std = torch.std(state_m, axis=0, keepdims=True)
+        self.std = torch.max(self.std, torch.ones_like(self.std))
         if normalization:
             state_m = self._normalization(state_m)
             self.state_m = state_m.reshape(batch_size, steps, -1)
