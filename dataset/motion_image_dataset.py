@@ -1,6 +1,5 @@
 import torch
 from torch.utils.data import Dataset
-from torch.utils.data.dataloader import DataLoader
 from torchvision import transforms
 import glob
 from tqdm import tqdm
