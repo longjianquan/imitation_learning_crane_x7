@@ -25,14 +25,11 @@ class MotionCopyServer(SocketServer):
         df = df.set_index('time')
 
         col_names = []
-        col_names += [f's_presentposition[{i}]' for i in range(8)]
-        col_names += [f's_presentvelocity[{i}]' for i in range(8)]
-        col_names += [f's_tau_res[{i}]' for i in range(8)]
         col_names += [f'm_presentposition[{i}]' for i in range(8)]
         col_names += [f'm_presentvelocity[{i}]' for i in range(8)]
         col_names += [f'm_tau_res[{i}]' for i in range(8)]
 
-        self.motion_data = df.loc[::40, col_names]
+        self.motion_data = df.loc[::20, col_names]
 
 
         print('motion_data:', self.motion_data.shape)
@@ -72,7 +69,7 @@ def argparse():
     from argparse import ArgumentParser
     parser = ArgumentParser()
     parser.add_argument('--data_path', type=str,
-        default='./crane_x7/slave1.pt')
+        default='./crane_x7/build/slave1.csv')
     args = parser.parse_args()
     return args
 
