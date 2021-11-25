@@ -26,7 +26,7 @@
 TARGET      = example_CRANE-X7
 
 # important directories used by assorted rules and other variables
-DIR_DXL    = ../../../DynamixelSDK/c++/
+DIR_DXL    = ../../../../DynamixelSDK/c++/
 DIR_OBJS   = .objects
 
 # compiler options
