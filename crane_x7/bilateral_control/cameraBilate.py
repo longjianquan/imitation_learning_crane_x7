@@ -10,6 +10,9 @@ import time
 import socket
 import select
 import os
+
+print('PID:', os.getpid())
+
 #cap = cv2.VideoCapture(0)
 cap= cv2.VideoCapture(-1, cv2.CAP_V4L)
 

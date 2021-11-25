@@ -34,13 +34,12 @@ static double	JOINT_MAX[JOINT_NUM]	=	{	3834,	3072,	3834,	2048,	3834,	3072,	3948,
 
 //********************サーボの位置制御モードでの動作位置の設定********************//
 static double	save_pose[JOINT_NUM]	=	{	1.68,		3.14,		3.88,		1.71,		3.14,		3.14,		3.14,		3.49134};	// 位置制御モードで一旦行く位置(rad)
-static double	goal_pose[JOINT_NUM]	=	{	3.14,		3.14,		3.14,		1.38,		3.14,		3.614,		3.14,		3.49134}; // 位置制御モードからトルク制御モードに切り替わる時の位置(rad)
-static double	initial_positioin[JOINT_NUM]	=	{	3.14,		3.14,		3.14,		1.38,		3.14,		3.614,		3.14,		3.49134}; // Move_goal_position関数の引数(rad)後でバイラテ用の位置調べる
+static double	goal_pose[JOINT_NUM]	=	{	3.14,		3.14,		3.14,		1.38,		3.14,		3.14,		3.14,		4.0}; // 位置制御モードからトルク制御モードに切り替わる時の位置(rad)
 static double	finish_pose[JOINT_NUM]	=	{	1.68,		2.81,		3.14,		0.81,		3.16,		3.14,		3.14,		3.49134};	// 動作終了時の位置(rad)
 
 //********************サーボのトルク制御モードでの速度リミットの設定********************//
 //static double	LIMIT_SPEED[JOINT_NUM]	=	{	5.00,   2.50,	3.00,	4.50,	5.50,	5.50,	5.00,	5.00};		// 速度リミット、これを超えたら動作が自動で停止する
-static double	LIMIT_SPEED[JOINT_NUM]	=	{	3.00,   2.00,	2.00,	2.50,	4.50,	4.50,	4.00,	4.00};		// 速度リミット、これを超えたら動作が自動で停止する
+static double	LIMIT_SPEED[JOINT_NUM]	=	{	3.00,   2.00,	2.00,	2.50,	4.50,	4.50,	4.00,	6.00};		// 速度リミット、これを超えたら動作が自動で停止する
 
 
 //ココはdegreeなので0中心
@@ -152,7 +151,7 @@ void *slave_control(void *)
 
 	// 初期位置を設定
 	for(int i=0;i<JOINT_NUM2;i++){
-		crslave.goal_position[i] = initial_positioin[i];
+		crslave.goal_position[i] = goal_pose[i];
 	    crslave.goal_velocity[i] = 0.0;
 		crslave.target_torque[i] = 0.0;
 		p_th_s_res[i] = crslave.present_position[i];;
@@ -615,7 +614,7 @@ void *master_control(void *)
 	crmaster.Move_Goal_Position( save_pose, ID, JOINT_MIN, JOINT_MAX );
 
 	for(int i=0;i<JOINT_NUM2;i++){
-		crmaster.goal_position[i] = initial_positioin[i];
+		crmaster.goal_position[i] = goal_pose[i];
 		crmaster.goal_velocity[i] = 0.0;
 		crmaster.target_torque[i] = 0.0;
 		p_th_m_res[i] = crmaster.present_position[i];
