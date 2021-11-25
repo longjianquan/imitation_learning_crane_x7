@@ -32,7 +32,7 @@ static double	JOINT_MAX[JOINT_NUM]	=	{	3834,	3072,	3834,	2048,	3834,	3072,	3948,
 static double	save_pose[JOINT_NUM]	=	{	2.10,		3.14,		3.54,		1.415,		3.14,		3.34,		3.14,		3.327};	// Move_goal_position関数の引数(rad)後でバイラテ用の位置調べる
 static double	goal_pose[JOINT_NUM]	=	{	3.14,		3.14,		3.14,		1.415,		3.14,		3.34,		1.67,		3.327}; // Move_goal_position関数の引数(rad)後でバイラテ用の位置調べる
 static double	finish_pose[JOINT_NUM]	=	{	2.10,		3.10,		3.54,		0.45,		3.16,		2.94,		3.14,		3.327};	// Move_goal_position関数の引数(rad)後でバイラテ用の位置調べる
-static double	LIMIT_SPEED[JOINT_NUM]	=	{	3.00,   2.50,	3.00,	3.00,	4.50,	5.00,	4.00,	4.00};		// 速度の上限値暴れた時ように教師データ収集時より下げている
+static double	LIMIT_SPEED[JOINT_NUM]	=	{	3.00,   2.50,	3.00,	3.00,	4.50,	5.00,	6.00,	4.00};		// 速度の上限値暴れた時ように教師データ収集時より下げている
 //static double	LIMIT_SPEED[JOINT_NUM]	=	{	4.00,   2.50,	3.00,	4.00,	4.50,	5.00,	4.00,	4.00};		// 速度の上限値
 
 static double	initial_positioin[JOINT_NUM]	=	{	3.14,		3.14,		3.14,		1.415,		3.14,		3.34,		1.67,		3.327}; // Move_goal_position関数の引数(rad)後でバイラテ用の位置調べる
@@ -61,8 +61,10 @@ static double p_th_m_res[JOINT_NUM], p_dth_m_res[JOINT_NUM], p_ddth_m_res[JOINT_
 static double p_th_s_res[JOINT_NUM], p_dth_s_res[JOINT_NUM], p_ddth_s_res[JOINT_NUM];
 static double p_tau_m_res[JOINT_NUM], p_tau_s_res[JOINT_NUM];
 
+// const char* devicename1 = "/dev/ttyUSB0";//こっちがスレーブ
+// const char* devicename2 = "/dev/ttyUSB1";//こっちがマスター
+
 const char* devicename1 = "/dev/ttyUSB0";//こっちがスレーブ
-const char* devicename2 = "/dev/ttyUSB1";//こっちがマスター
 
 double a[21];
 struct sockaddr_in addr;

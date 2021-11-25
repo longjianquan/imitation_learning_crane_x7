@@ -2,16 +2,16 @@
 # -*- coding: utf-8 -*-
 import datetime
 import numpy as np
-import chainer.serializers
-import matplotlib.pylab as plt
-from chainer import Chain, Variable, cuda, optimizer, optimizers, serializers
-import chainer.functions as F
-import chainer.links as L
-from mpl_toolkits.mplot3d.axes3d import Axes3D
-from statistics import mean, median,variance,stdev
-import cv2
-import matplotlib.pyplot as plt
-import math
+# import chainer.serializers
+# import matplotlib.pylab as plt
+# from chainer import Chain, Variable, cuda, optimizer, optimizers, serializers
+# import chainer.functions as F
+# import chainer.links as L
+# from mpl_toolkits.mplot3d.axes3d import Axes3D
+# from statistics import mean, median,variance,stdev
+# import cv2
+# import matplotlib.pyplot as plt
+# import math
 
 
 #from __future__ import print_function
@@ -21,11 +21,17 @@ import select
 
 in_size = 18
 out_size = 18
-filepath = "../../DataMake/motion_copy/"
+# filepath = "../../DataMake/motion_copy/"
+filename = './crane_x7/build/slave1.csv'
 
 # モデルの定義
 #train_data = np.loadtxt("../DataMake/TrainData10s/train20.csv",delimiter=",", dtype = np.float32)
-train_data = np.loadtxt("{}train0.csv".format(filepath) ,delimiter=",", dtype = np.float32)
+train_data = np.loadtxt(
+	filename,
+	delimiter=',',
+	dtype=np.float32,
+	skiprows=1,
+)
 print(train_data.shape)
 train_m = []
 for i in range(len(train_data)-1):
@@ -34,83 +40,83 @@ width = np.array(train_data[9][1], dtype="float32").reshape((1,))
 
 print(train_m[0])
 
-def ShowTrajectory(predict, SlaveData):
-	predict = np.array(predict,dtype="float32")
+# def ShowTrajectory(predict, SlaveData):
+# 	predict = np.array(predict,dtype="float32")
 
-	#SlaveData = Normalization.AntiNormDATA(SlaveData, LSTM_OutSize)
-	LenPredict = len(predict)
-	LenSlaveData = len(SlaveData)
-	if LenPredict > LenSlaveData:
-		predict = np.delete(predict, slice(len(SlaveData), None), axis=0)
-	elif LenSlaveData > LenPredict:
-		SlaveData = np.delete(SlaveData, slice(len(predict), None), axis=0)
-	SlaveData = np.array(SlaveData,dtype="float32")
+# 	#SlaveData = Normalization.AntiNormDATA(SlaveData, LSTM_OutSize)
+# 	LenPredict = len(predict)
+# 	LenSlaveData = len(SlaveData)
+# 	if LenPredict > LenSlaveData:
+# 		predict = np.delete(predict, slice(len(SlaveData), None), axis=0)
+# 	elif LenSlaveData > LenPredict:
+# 		SlaveData = np.delete(SlaveData, slice(len(predict), None), axis=0)
+# 	SlaveData = np.array(SlaveData,dtype="float32")
 
-  #動き出しをグラフにするとスケールが違いすぎてよく見えないからカット
-	#SlaveData = np.delete(SlaveData, slice(None, 50), axis=0)
-	#predict = np.delete(predict, slice(None, 50), axis=0)
+#   #動き出しをグラフにするとスケールが違いすぎてよく見えないからカット
+# 	#SlaveData = np.delete(SlaveData, slice(None, 50), axis=0)
+# 	#predict = np.delete(predict, slice(None, 50), axis=0)
 
-	# グラフを描写
-	fig=plt.figure()
-	# パラメータ
+# 	# グラフを描写
+# 	fig=plt.figure()
+# 	# パラメータ
 
-	plt.subplot(3,3,1)
-	plt.title("Angle Joint 0")
-	plt.plot(range(len(predict)), SlaveData.T[0], color="blue", label="SlaveData")
-	plt.plot(range(len(predict)), predict.T[0], color="red", label="predict")
-	plt.legend()
+# 	plt.subplot(3,3,1)
+# 	plt.title("Angle Joint 0")
+# 	plt.plot(range(len(predict)), SlaveData.T[0], color="blue", label="SlaveData")
+# 	plt.plot(range(len(predict)), predict.T[0], color="red", label="predict")
+# 	plt.legend()
 
-	plt.subplot(3,3,2)
-	plt.title("Angle Joint 1")
-	plt.plot(range(len(predict)), SlaveData.T[1], color="blue", label="SlaveData")
-	plt.plot(range(len(predict)), predict.T[1], color="red", label="predict")
-	plt.legend()
+# 	plt.subplot(3,3,2)
+# 	plt.title("Angle Joint 1")
+# 	plt.plot(range(len(predict)), SlaveData.T[1], color="blue", label="SlaveData")
+# 	plt.plot(range(len(predict)), predict.T[1], color="red", label="predict")
+# 	plt.legend()
 
-	plt.subplot(3,3,3)
-	plt.title("Angle Joint 2")
-	plt.plot(range(len(predict)), SlaveData.T[2], color="blue", label="SlaveData")
-	plt.plot(range(len(predict)), predict.T[2], color="red", label="predict")
-	plt.legend()
+# 	plt.subplot(3,3,3)
+# 	plt.title("Angle Joint 2")
+# 	plt.plot(range(len(predict)), SlaveData.T[2], color="blue", label="SlaveData")
+# 	plt.plot(range(len(predict)), predict.T[2], color="red", label="predict")
+# 	plt.legend()
 
-	plt.subplot(3,3,4)
-	plt.title("AngularVelocity Joint 0")
-	plt.plot(range(len(predict)), SlaveData.T[3], color="blue", label="SlaveData")
-	plt.plot(range(len(predict)), predict.T[3], color="red", label="predict")
-	plt.legend()
+# 	plt.subplot(3,3,4)
+# 	plt.title("AngularVelocity Joint 0")
+# 	plt.plot(range(len(predict)), SlaveData.T[3], color="blue", label="SlaveData")
+# 	plt.plot(range(len(predict)), predict.T[3], color="red", label="predict")
+# 	plt.legend()
 
-	plt.subplot(3,3,5)
-	plt.title("AngularVelocity Joint 1")
-	plt.plot(range(len(predict)), SlaveData.T[4], color="blue", label="SlaveData")
-	plt.plot(range(len(predict)), predict.T[4], color="red", label="predict")
-	plt.legend()
+# 	plt.subplot(3,3,5)
+# 	plt.title("AngularVelocity Joint 1")
+# 	plt.plot(range(len(predict)), SlaveData.T[4], color="blue", label="SlaveData")
+# 	plt.plot(range(len(predict)), predict.T[4], color="red", label="predict")
+# 	plt.legend()
 
-	plt.subplot(3,3,6)
-	plt.title("AngularVelocity Joint 2")
-	plt.plot(range(len(predict)), SlaveData.T[5], color="blue", label="SlaveData")
-	plt.plot(range(len(predict)), predict.T[5], color="red", label="predict")
-	plt.legend()
+# 	plt.subplot(3,3,6)
+# 	plt.title("AngularVelocity Joint 2")
+# 	plt.plot(range(len(predict)), SlaveData.T[5], color="blue", label="SlaveData")
+# 	plt.plot(range(len(predict)), predict.T[5], color="red", label="predict")
+# 	plt.legend()
 
-	plt.title("Torque")
+# 	plt.title("Torque")
 
-	plt.subplot(3,3,7)
-	plt.title("Torque Joint 0")
-	plt.plot(range(len(predict)), SlaveData.T[6], color="blue", label="SlaveData")
-	plt.plot(range(len(predict)), predict.T[6], color="red", label="predict")
-	plt.legend()
+# 	plt.subplot(3,3,7)
+# 	plt.title("Torque Joint 0")
+# 	plt.plot(range(len(predict)), SlaveData.T[6], color="blue", label="SlaveData")
+# 	plt.plot(range(len(predict)), predict.T[6], color="red", label="predict")
+# 	plt.legend()
 
-	plt.subplot(3,3,8)
-	plt.title("Torque Joint 1")
-	plt.plot(range(len(predict)), SlaveData.T[7], color="blue", label="SlaveData")
-	plt.plot(range(len(predict)), predict.T[7], color="red", label="predict")
-	plt.legend()
+# 	plt.subplot(3,3,8)
+# 	plt.title("Torque Joint 1")
+# 	plt.plot(range(len(predict)), SlaveData.T[7], color="blue", label="SlaveData")
+# 	plt.plot(range(len(predict)), predict.T[7], color="red", label="predict")
+# 	plt.legend()
 
-	plt.subplot(3,3,9)
-	plt.title("Torque Joint 2")
-	plt.plot(range(len(predict)), SlaveData.T[8], color="blue", label="SlaveData")
-	plt.plot(range(len(predict)), predict.T[8], color="red", label="predict")
-	plt.legend()
+# 	plt.subplot(3,3,9)
+# 	plt.title("Torque Joint 2")
+# 	plt.plot(range(len(predict)), SlaveData.T[8], color="blue", label="SlaveData")
+# 	plt.plot(range(len(predict)), predict.T[8], color="red", label="predict")
+# 	plt.legend()
 
-	plt.show()
+# 	plt.show()
 
 
 
