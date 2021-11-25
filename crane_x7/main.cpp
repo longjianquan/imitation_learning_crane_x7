@@ -367,11 +367,12 @@ void *slave_control(void *)
             if ( FD_ISSET( sock ,&fdw ) && sendf == true )
             { 
     
-                dprintf( sock ,"%5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f",
-                (float)crslave.present_position[0], (float)crslave.present_position[1], (float)crslave.present_position[3], (float)crslave.present_position[4], (float)crslave.present_position[5], (float)crslave.present_position[6],(float)crslave.present_position[7], 
-                (float)crslave.d_theta_res[0], (float)crslave.d_theta_res[1], (float)crslave.d_theta_res[3], (float)crslave.d_theta_res[4], (float)crslave.d_theta_res[5], (float)crslave.d_theta_res[6], (float)crslave.d_theta_res[7],
-                (float)crslave.tau_res[0], (float)crslave.tau_res[1], (float)crslave.tau_res[3], (float)crslave.tau_res[4], (float)crslave.tau_res[5], (float)crslave.tau_res[6],(float)crslave.tau_res[7],
-                (float)passtime);
+                dprintf( sock ,"%5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f",
+					(float)crslave.present_position[0], (float)crslave.present_position[1], (float)crslave.present_position[2], (float)crslave.present_position[3], (float)crslave.present_position[4], (float)crslave.present_position[5], (float)crslave.present_position[6],(float)crslave.present_position[7], 
+					(float)crslave.d_theta_res[0], (float)crslave.d_theta_res[1], (float)crslave.d_theta_res[2], (float)crslave.d_theta_res[3], (float)crslave.d_theta_res[4], (float)crslave.d_theta_res[5], (float)crslave.d_theta_res[6], (float)crslave.d_theta_res[7],
+					(float)crslave.tau_res[0], (float)crslave.tau_res[1], (float)crslave.tau_res[2], (float)crslave.tau_res[3], (float)crslave.tau_res[4], (float)crslave.tau_res[5], (float)crslave.tau_res[6],(float)crslave.tau_res[7],
+					(float)passtime
+				);
     
                 //C++→pythonに送ったものを表示して確認
                 printf("送った\n");				

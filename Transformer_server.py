@@ -126,6 +126,10 @@ class TransformerServer(SocketServer):
         frame.save(os.path.join(
             self.path_output_image, f'pred{data[-1]:.3f}.jpg'))
 
+        # temporary
+        state_hat = np.delete(state_hat, [2, 10, 18])
+        print('state_hat:', state_hat.shape)
+
         # to string
         msg = ''
         for y_element in state_hat[:self.input_dim]:
