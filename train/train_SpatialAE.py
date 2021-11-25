@@ -41,6 +41,8 @@ class SpatialAETrainer(Tranier):
         gpu_num: list = [0],
         early_stopping_count: int = 1000,
     ):
+        self.out_dir = out_dir
+
         train_dataset = ImageDataset(
             data_path,
             train=True,
