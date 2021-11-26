@@ -386,7 +386,7 @@ void *slave_control(void *)
                     l = recv( sock ,rbuf ,sizeof( rbuf ) ,0 );
                     *( rbuf + l ) = 0;
 
-                    //printf("-> %d %s\n", i,rbuf );
+                    printf("-> %s\n", rbuf );
                     sendf = true;
                     tp = strtok(rbuf, ",");
 

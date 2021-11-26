@@ -21,7 +21,7 @@ class SocketServer():
         print('Waiting for connection...')
         self.clientSocket, address = self.socket.accept()
         print(f'Connection from {address} has been established!')
-        # self.clientSocket.send(f'Connected to {host}:{port}'.encode('utf-8'))
+        self.clientSocket.send(f'Connected to {host}:{port}'.encode('utf-8'))
 
     def standby(self, callback: callable(str)):
         try:
@@ -30,12 +30,11 @@ class SocketServer():
                 msg = self.clientSocket.recv(self.bufsize).decode('utf-8')
                 print(f'receive "{msg}"')
 
-                if msg == 'exit' or '**':
+                if msg == 'exit':
                     break
 
                 # calculate callback
                 output = callback(msg).encode('utf-8')
-                print(f'send "{output}"')
 
                 # send message
                 self.clientSocket.send(output)
@@ -45,7 +44,3 @@ class SocketServer():
             self.socket.close()
             self.clientSocket.close()
             print('Disconnect from client')
-
-
-def callback(msg: str) -> str:
-    return f'receive "{msg}"'

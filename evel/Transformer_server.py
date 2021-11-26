@@ -73,8 +73,6 @@ class TransformerServer(SocketServer):
         self.transformer.load_state_dict(state_dict)
         self.transformer = self.transformer.to(device)
 
-        # self.h = torch.zeros((self.lstm.LSTM_layer_num, 1, self.lstm.LSTM_dim)).to(device)
-        # self.c = torch.zeros((self.lstm.LSTM_layer_num, 1, self.lstm.LSTM_dim)).to(device)
         self.memory = []
 
         self.path_output_image = path_output_image
@@ -86,6 +84,7 @@ class TransformerServer(SocketServer):
         return super().standby(self.NN_callback)
 
     def NN_callback(self, msg: str) -> str:
+        print('msg', msg)
         data = np.fromstring(msg, dtype=np.float32 , sep=' ')
         state = data[:self.input_dim]
         image = self.getImage()
@@ -107,7 +106,7 @@ class TransformerServer(SocketServer):
         image = image.unsqueeze(0)
         # image_feature = self.image_encoder(image)
         # state = torch.cat([state, image_feature.unsqueeze(0)], dim=2)
-        state_hat = self.transformer(memory)
+        state_hat = self.transformer(memory)[:, -1]
         # image_hat = self.image_decoder(
         #     image_feature, image_size=image.shape[-1])
 
@@ -166,9 +165,6 @@ def main(args):
     # pytorch device setting
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print('device:', device)
-
-    # server = SocketServer()
-    # server.standby(callback=callback)
 
     imageServer = ImageServer(image_size=128)
 
