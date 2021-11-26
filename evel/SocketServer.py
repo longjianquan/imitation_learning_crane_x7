@@ -9,7 +9,6 @@ class SocketServer():
         backlog: int = 10,
         bufsize: int = 4096,
     ):
-
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         if host == '':
             host = socket.gethostname()
@@ -22,7 +21,7 @@ class SocketServer():
         print('Waiting for connection...')
         self.clientSocket, address = self.socket.accept()
         print(f'Connection from {address} has been established!')
-        self.clientSocket.send(f'Connected to {host}:{port}'.encode('utf-8'))
+        # self.clientSocket.send(f'Connected to {host}:{port}'.encode('utf-8'))
 
     def standby(self, callback: callable(str)):
         try:
@@ -31,11 +30,12 @@ class SocketServer():
                 msg = self.clientSocket.recv(self.bufsize).decode('utf-8')
                 print(f'receive "{msg}"')
 
-                if msg == 'exit':
+                if msg == 'exit' or '**':
                     break
 
                 # calculate callback
                 output = callback(msg).encode('utf-8')
+                print(f'send "{output}"')
 
                 # send message
                 self.clientSocket.send(output)

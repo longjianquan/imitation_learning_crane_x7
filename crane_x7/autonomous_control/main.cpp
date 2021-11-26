@@ -27,15 +27,14 @@
 static int		ID[JOINT_NUM]			=	{	2,		3,		4,		5,		6,		7,		8,		9};			// サーボモータのID
 static double	JOINT_MIN[JOINT_NUM]	=	{	262,	1024,	262,	228,	262,	1024,	148,	1991};		// サーボモータの最小動作角(value)
 static double	JOINT_MAX[JOINT_NUM]	=	{	3834,	3072,	3834,	2048,	3834,	3072,	3948,	3072};		// サーボモータの最大動作角(value)
-//static double	JOINT_MIN[JOINT_NUM]	=	{	0,40	1.57,	0.40,	0.35,	0.40,	1.57,	0.22,	3.05};		// サーボモータの最小動作角(rad)
-//static double	JOINT_MAX[JOINT_NUM]	=	{	5.88,	4.71,	5.88,	3.14,	5.88,	4.71,	6.05,	4.71};		// サーボモータの最大動作角(rad)
-static double	save_pose[JOINT_NUM]	=	{	2.10,		3.14,		3.54,		1.415,		3.14,		3.34,		3.14,		3.327};	// Move_goal_position関数の引数(rad)後でバイラテ用の位置調べる
-static double	goal_pose[JOINT_NUM]	=	{	3.14,		3.14,		3.14,		1.415,		3.14,		3.34,		1.67,		3.327}; // Move_goal_position関数の引数(rad)後でバイラテ用の位置調べる
+// static double	save_pose[JOINT_NUM]	=	{	2.10,		3.14,		3.54,		1.415,		3.14,		3.34,		3.14,		3.327};	// Move_goal_position関数の引数(rad)後でバイラテ用の位置調べる
+// static double	goal_pose[JOINT_NUM]	=	{	3.14,		3.14,		3.14,		1.415,		3.14,		3.34,		1.67,		3.327}; // Move_goal_position関数の引数(rad)後でバイラテ用の位置調べる
+static double	save_pose[JOINT_NUM]	=	{	1.68,		3.14,		3.88,		1.71,		3.14,		3.14,		3.14,		3.49134};	// 位置制御モードで一旦行く位置(rad)
+static double	goal_pose[JOINT_NUM]	=	{	3.14,		3.14,		3.14,		1.38,		3.14,		3.14,		3.14,		4.0};
 static double	finish_pose[JOINT_NUM]	=	{	2.10,		3.10,		3.54,		0.45,		3.16,		2.94,		3.14,		3.327};	// Move_goal_position関数の引数(rad)後でバイラテ用の位置調べる
 static double	LIMIT_SPEED[JOINT_NUM]	=	{	3.00,   2.50,	3.00,	3.00,	4.50,	5.00,	6.00,	4.00};		// 速度の上限値暴れた時ように教師データ収集時より下げている
-//static double	LIMIT_SPEED[JOINT_NUM]	=	{	4.00,   2.50,	3.00,	4.00,	4.50,	5.00,	4.00,	4.00};		// 速度の上限値
 
-static double	initial_positioin[JOINT_NUM]	=	{	3.14,		3.14,		3.14,		1.415,		3.14,		3.34,		1.67,		3.327}; // Move_goal_position関数の引数(rad)後でバイラテ用の位置調べる
+// static double	initial_positioin[JOINT_NUM]	=	{	3.14,		3.14,		3.14,		1.415,		3.14,		3.34,		1.67,		3.327}; // Move_goal_position関数の引数(rad)後でバイラテ用の位置調べる
 
 //ココはdegreeなので0中心
 static double ts = 0.002;
@@ -114,7 +113,7 @@ void *slave_control(void *)
 	crslave.Move_Goal_Position( save_pose, ID, JOINT_MIN, JOINT_MAX);
 
 	for(int i=0;i<JOINT_NUM2;i++){
-		crslave.goal_position[i] = initial_positioin[i];
+		crslave.goal_position[i] = goal_pose[i];
 	    crslave.goal_velocity[i] = 0.0;
 		crslave.target_torque[i] = 0.0;
 		p_th_s_res[i] = crslave.present_position[i];;
@@ -435,7 +434,7 @@ void *slave_control(void *)
         pthread_mutex_lock(&mutex);// すぐなら4.2秒、少し待つなら5.5
         if(passtime <= 4.3){//4.2     通信始めてからLSTMがなれるまでマージンとってる
 	        for(int i=0;i<JOINT_NUM2;i++){
-			crslave.goal_position[i] = initial_positioin[i];
+			crslave.goal_position[i] = goal_pose[i];
 	    	crslave.goal_velocity[i] = 0.0;
 			crslave.target_torque[i] = 0.0;
 			p_th_s_res[i] = crslave.present_position[i];;

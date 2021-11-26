@@ -40,8 +40,10 @@ class MotionCopyServer(SocketServer):
         return super().standby(self.NN_callback)
 
     def NN_callback(self, msg: str) -> str:
+        print(msg)
         # data = np.fromstring(msg, dtype=np.float32 , sep=' ')
         state_hat = np.array(self.motion_data.iloc[self.count])
+        print('state_hat:', state_hat)
         # temporary
         state_hat = np.delete(state_hat, [2, 10, 18])
         print('state_hat:', state_hat)
