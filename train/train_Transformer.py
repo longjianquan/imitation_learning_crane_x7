@@ -1,5 +1,6 @@
 from typing import Tuple
 import wandb
+import os
 
 import torch.nn as nn
 import torch
@@ -12,7 +13,8 @@ import sys
 sys.path.append('.')
 from train.trainer import Tranier
 from model.SpatialAE import SpatialAE
-from dataset.motion_image_dataset import MotionImageDataset
+# from dataset.motion_image_dataset import MotionImageDataset
+from dataset.motion_dataset import MotionDataset
 from dataset.fast_dataloader import FastDataLoader
 from model.TransformerImitation import TransformerImitation
 from util.plot_result import *
@@ -29,25 +31,32 @@ class TransformerTrainer(Tranier):
         wandb_flag: bool,
         gpu_num: list = [0],
     ):
-        image_encoder = SpatialAE(
-            feature_point_num=16,
-            image_size=args.image_size,
-        )
-        image_encoder.load_state_dict(torch.load(
-            './model_param/SpatialAE_param.pt'))
+        self.out_dir = out_dir
+        self.loss_fn = nn.MSELoss()
+        self.fig_state = plt.figure(figsize=(20, 20))
 
-        train_dataset = MotionImageDataset(
+        # image_encoder = SpatialAE(
+        #     feature_point_num=16,
+        #     image_size=args.image_size,
+        # )
+        # image_encoder.load_state_dict(torch.load(
+        #     './model_param/SpatialAE_param.pt'))
+        # self.device = torch.device(f'cuda:{gpu_num[0]}'
+        #     if torch.cuda.is_available() else 'cpu')
+        # image_encoder.to(self.device)
+
+        train_dataset = MotionDataset(
             data_path,
             train=True,
-            image_size=image_size,
-            image_encoder=image_encoder.encoder,
+            # image_size=image_size,
+            # image_encoder=image_encoder.encoder,
             normalization=False,
         )
-        valid_dataset = MotionImageDataset(
+        valid_dataset = MotionDataset(
             data_path,
             train=False,
-            image_size=image_size,
-            image_encoder=image_encoder.encoder,
+            # image_size=image_size,
+            # image_encoder=image_encoder.encoder,
             normalization=False,
         )
 
@@ -81,17 +90,6 @@ class TransformerTrainer(Tranier):
             gpu_num=gpu_num,
         )
 
-        # figure
-        self.fig_reconstructed_image = plt.figure(figsize=(20, 10))
-        self.fig_latent_space = plt.figure(figsize=(10, 10))
-        self.fig_feature_map = plt.figure(figsize=(10, 10))
-
-        self.loss_fn = nn.MSELoss()
-
-        # data for plot
-        self.valid_encoded = []
-        self.valid_label = []
-
         if wandb_flag:
             wandb.init(project='TransformerImitation')
             config = wandb.config
@@ -115,10 +113,33 @@ class TransformerTrainer(Tranier):
         # print(pred)
         loss = self.loss_fn(y, pred)
 
+        self.y = y
+        self.pred = pred
+
         return loss
 
+    def plot_result(self, epoch: int):
+        if epoch % 10 == 0:
+            self.fig_state.clf()
+            state_ans = self.y[0].cpu()
+            pred = self.pred[0].cpu()
+            state_ans = state_ans.cpu().detach().numpy().copy()
+            pred = pred.cpu().detach().numpy().copy()
+            plot_state(self.fig_state, state_ans, pred, col=3)
+            self.fig_state.suptitle('{} epoch'.format(epoch))
+            path_state_png = os.path.join(self.out_dir, 'state.png')
+            self.fig_state.savefig(path_state_png)
+
+            # upload to wandb
+            if self.wandb_flag:
+                wandb.log({
+                    'epoch': epoch,
+                    'state': wandb.Image(self.fig_state),
+                })
+                wandb.save(path_state_png)
+
     def train(self, n_epochs: int):
-        return super().train(n_epochs)
+        return super().train(n_epochs, callback=self.plot_result)
 
 
 def main(args):
