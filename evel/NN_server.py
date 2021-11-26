@@ -160,13 +160,13 @@ class AE_LSTM_Server(SocketServer):
         print('image shape:', image.shape)
 
         image = image.unsqueeze(0)
-        image_feature = self.image_encoder(image)
+        # image_feature = self.image_encoder(image)
         # state = torch.cat([state, image_feature.unsqueeze(0)], dim=2)
         
         state_hat, (self.h, self.c) = self.lstm(state, (self.h, self.c))
         
-        image_hat = self.image_decoder(
-            image_feature, image_size=image.shape[-1])
+        # image_hat = self.image_decoder(
+        #     image_feature, image_size=image.shape[-1])
 
         state_hat = state_hat.cpu().detach().numpy().flatten()
         state_hat = state_hat * self.std + self.mean
@@ -174,11 +174,12 @@ class AE_LSTM_Server(SocketServer):
 
         image = image.squeeze().cpu().detach().numpy()
         image = image.transpose(1, 2, 0)
-        image_hat = image_hat.squeeze().cpu().detach().numpy()
-        image_hat = image_hat.transpose(1, 2, 0)
-        frame = np.concatenate([image, image_hat], axis=1)
+        # image_hat = image_hat.squeeze().cpu().detach().numpy()
+        # image_hat = image_hat.transpose(1, 2, 0)
+        # frame = np.concatenate([image, image_hat], axis=1)
         # self.writer.writeFrame(frame)
         # self.frames.append((255 * frame).astype(np.uint8))
+        frame = image
         frame = Image.fromarray((255 * frame).astype(np.uint8), mode=None)
         frame.save(self.output_dir + f'/pred{data[-1]:.3f}.jpg')
 

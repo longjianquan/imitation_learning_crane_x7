@@ -29,6 +29,7 @@
 #include <termios.h>
 #include <unistd.h>
 #include <math.h>
+#include <string>
 #include "dynamixel_sdk.h"
 
 #ifndef JOINT_NUM
