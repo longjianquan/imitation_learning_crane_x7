@@ -7,6 +7,8 @@ import cv2
 from PIL import Image
 import os
 
+import sys
+sys.path.append('.')
 from model.SpatialAE import SpatialAE
 from SocketServer import SocketServer
 from model.TransformerImitation import TransformerImitation
