@@ -30,38 +30,39 @@ static double JOINT_MIN[JOINT_NUM] = {
 static double JOINT_MAX[JOINT_NUM] = {
     3834, 3072, 3834, 2048,
     3834, 3072, 3948, 3072};  // サーボモータの最大動作角(value)
-// static double	JOINT_MIN[JOINT_NUM]	=	{	0,40	1.57,
-// 0.40,	0.35,	0.40,	1.57,	0.22,	3.05};		//
-// サーボモータの最小動作角(rad) static double	JOINT_MAX[JOINT_NUM] =
-// {	5.88,	4.71,	5.88,	3.14,	5.88,	4.71,	6.05,	4.71};
-// // サーボモータの最大動作角(rad)
+// static double	save_pose[JOINT_NUM]	=
+// {	2.10,		3.14,		3.54,		1.415,		3.14,		3.34,
+// 3.14,		3.327};	//
+// Move_goal_position関数の引数(rad)後でバイラテ用の位置調べる static double
+// goal_pose[JOINT_NUM]	=
+// {	3.14,		3.14,		3.14,		1.415,		3.14,		3.34,
+// 1.67,		3.327}; //
+// Move_goal_position関数の引数(rad)後でバイラテ用の位置調べる
 static double save_pose[JOINT_NUM] = {
-    1.68, 3.27, 3.88, 1.40, 3.14,
-    3.14, 3.14, 3.54};  // Move_goal_position関数の引数(rad)後でバイラテ用の位置調べる
-static double goal_pose[JOINT_NUM] = {
-    3.14, 3.02, 3.14, 1.38, 3.14,
-    2.11, 3.14, 3.54};  // Move_goal_position関数の引数(rad)後でバイラテ用の位置調べる
+    1.68, 3.14, 3.88, 1.71,
+    3.14, 3.14, 3.14, 3.49134};  // 位置制御モードで一旦行く位置(rad)
+static double goal_pose[JOINT_NUM] = {3.14, 3.14, 3.14, 1.38,
+                                      3.14, 3.14, 3.14, 4.0};
 static double finish_pose[JOINT_NUM] = {
-    1.68, 2.81, 3.14, 0.81, 3.16,
-    3.14, 3.14, 3.54};  // Move_goal_position関数の引数(rad)後でバイラテ用の位置調べる
-static double LIMIT_SPEED[JOINT_NUM] = {2.00, 1.50, 1.50, 3.00, 4.50,
-                                        5.00, 4.00, 4.00};  // 速度の上限値
-// static double	LIMIT_SPEED[JOINT_NUM]	=
-// {	4.00,   2.50,	3.00,	4.00,	4.50,	5.00,	4.00,	4.00};
-// // 速度の上限値
+    2.10, 3.10, 3.54, 0.45, 3.16,
+    2.94, 3.14, 3.327};  // Move_goal_position関数の引数(rad)後でバイラテ用の位置調べる
+static double LIMIT_SPEED[JOINT_NUM] = {
+    3.00, 2.50, 3.00, 3.00, 4.50,
+    5.00, 6.00, 6.00};  // 速度の上限値暴れた時ように教師データ収集時より下げている
 
-static double initial_positioin[JOINT_NUM] = {
-    3.14, 3.02, 3.14, 1.38, 3.14,
-    2.11, 3.14, 3.54};  // Move_goal_position関数の引数(rad)後でバイラテ用の位置調べる
+// static double	initial_positioin[JOINT_NUM]	=
+// {	3.14,		3.14,		3.14,		1.415,		3.14,		3.34,
+// 1.67,		3.327}; //
+// Move_goal_position関数の引数(rad)後でバイラテ用の位置調べる
 
 //ココはdegreeなので0中心
 static double ts = 0.002;
-static double g[JOINT_NUM] = {1.0, 1.0, 40.0, 3.0, 3.0, 6.0, 1.5, 3.0};
+static double g[JOINT_NUM] = {10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0};
 int rnn_ts = 10;
 static char ch = 'p';
 static double passtime = 0.0;
 
-static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+// static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 // static double J[2][JOINT_NUM] = {{1, 1, 1, 1, 1, 1, 1, 1},{0.5, 0.5, 0.5,
 // 0.5, 0.5, 0.5, 0.5, 0.5}};
@@ -69,19 +70,19 @@ static double J[2][JOINT_NUM] = {
     {0.012258, 0.11299, 0.012028, 0.04, 0.005676, 0.0066, 0.006281, 0.006891},
     {0.012258, 0.11299, 0.012028, 0.04, 0.005676, 0.0066, 0.006281, 0.006891}};
 static double M[2][3] = {{2.094457, 1.1505, 1.18337},
-                         {2.094457, 1.1505, 1.18337}};
+                         {2.094457, 1.1505, 1.38337}};
 static double D[2][6] = {{0.0501, 0.242, 0.020, 0.0391, 0.0300, 0.021},
                          {0.0501, 0.242, 0.020, 0.0391, 0.0300, 0.021}};
 
 static double Kp[2][JOINT_NUM] = {
-    {625., 324, 900., 324., 484., 484., 484., 441.},
-    {625., 324, 625., 324., 484., 484., 484., 441.}};
+    {256., 196, 900., 81., 256., 256., 100., 256.},
+    {256., 196, 625., 81., 256., 256., 100., 256.}};
 
-static double Kd[2][JOINT_NUM] = {{50., 36., 60., 36., 44., 44., 44., 42.},
-                                  {50., 36., 25., 36., 44., 44., 44., 42.}};
+static double Kd[2][JOINT_NUM] = {{32., 28., 60., 18., 32., 32., 20., 32.},
+                                  {32., 28., 25., 18., 32., 32., 20., 32.}};
 
-static double Kf[2][JOINT_NUM] = {{1., 1., 1, 1, 1, 1, 1.5, 1.5},
-                                  {1., 1, 1, 1, 1, 1, 1.5, 1.5}};
+static double Kf[2][JOINT_NUM] = {{0.50, 0.50, 1, 0.50, 0.85, 0.75, 0.75, 1.0},
+                                  {0.50, 0.50, 1, 0.50, 0.85, 0.75, 0.75, 1.0}};
 
 static double p_th_m_res[JOINT_NUM], p_dth_m_res[JOINT_NUM],
     p_ddth_m_res[JOINT_NUM];
@@ -89,8 +90,10 @@ static double p_th_s_res[JOINT_NUM], p_dth_s_res[JOINT_NUM],
     p_ddth_s_res[JOINT_NUM];
 static double p_tau_m_res[JOINT_NUM], p_tau_s_res[JOINT_NUM];
 
+// const char* devicename1 = "/dev/ttyUSB0";//こっちがスレーブ
+// const char* devicename2 = "/dev/ttyUSB1";//こっちがマスター
+
 const char *devicename1 = "/dev/ttyUSB0";  //こっちがスレーブ
-const char *devicename2 = "/dev/ttyUSB1";  //こっちがマスター
 
 double a[21];
 struct sockaddr_in addr;
@@ -137,7 +140,7 @@ void *slave_control(void *) {
   crslave.Move_Goal_Position(save_pose, ID, JOINT_MIN, JOINT_MAX);
 
   for (int i = 0; i < JOINT_NUM2; i++) {
-    crslave.goal_position[i] = initial_positioin[i];
+    crslave.goal_position[i] = goal_pose[i];
     crslave.goal_velocity[i] = 0.0;
     crslave.target_torque[i] = 0.0;
     p_th_s_res[i] = crslave.present_position[i];
@@ -185,6 +188,9 @@ void *slave_control(void *) {
   fprintf(crslave.ffp,
           "m_tau_res[0],m_tau_res[1],m_tau_res[2],m_tau_res[3],m_tau_res[4],m_"
           "tau_res[5],m_tau_res[6],m_tau_res[7],");
+  fprintf(crslave.ffp, "a[0],a[1],a[2],a[3],a[4],a[5],a[6],");
+  fprintf(crslave.ffp, "a[7],a[8],a[9],a[10],a[11],a[12],a[13],");
+  fprintf(crslave.ffp, "a[14],a[15],a[16],a[17],a[18],a[19],a[20],");
   // fprintf( crslave.ffp,
   // "tau_p[0],tau_p[1],tau_p[2],tau_p[3],tau_p[4],tau_p[5],tau_p[6],tau_p[7],"
   // ); fprintf( crslave.ffp,
@@ -207,6 +213,8 @@ void *slave_control(void *) {
     printf("slave読み込み怪しいので終了\n");
     crslave.Move_Goal_Position(finish_pose, ID, JOINT_MIN, JOINT_MAX);
     sleep(5);
+    dprintf(sock, "%s", "**");
+    close(sock);
     crslave.Disable_Dynamixel_Torque(ID);
     crslave.Close_port();
     fclose(crslave.ffp);
@@ -229,6 +237,8 @@ void *slave_control(void *) {
       printf("slave読み込み怪しいので終了\n");
       crslave.Move_Goal_Position(finish_pose, ID, JOINT_MIN, JOINT_MAX);
       sleep(5);
+      dprintf(sock, "%s", "**");
+      close(sock);
       crslave.Disable_Dynamixel_Torque(ID);
       crslave.Close_port();
       fclose(crslave.ffp);
@@ -251,6 +261,8 @@ void *slave_control(void *) {
         printf("crslaveの軸%dが速いので終了\n", i);
         crslave.Move_Goal_Position(finish_pose, ID, JOINT_MIN, JOINT_MAX);
         sleep(5);
+        dprintf(sock, "%s", "**");
+        close(sock);
         crslave.Disable_Dynamixel_Torque(ID);
         crslave.Close_port();
         fclose(crslave.ffp);
@@ -335,6 +347,12 @@ void *slave_control(void *) {
             crslave.target_torque[2], crslave.target_torque[3],
             crslave.target_torque[4], crslave.target_torque[5],
             crslave.target_torque[6], crslave.target_torque[7]);
+    fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,", a[0], a[1], a[2], a[3],
+            a[4], a[5], a[6]);
+    fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,", a[7], a[8], a[9],
+            a[10], a[11], a[12], a[13]);
+    fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,", a[14], a[15], a[16],
+            a[17], a[18], a[19], a[20]);
     // fprintf( crslave.ffp,
     // "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,",crslave.tau_p[0],crslave.tau_p[1],crslave.tau_p[2],crslave.tau_p[3],crslave.tau_p[4],crslave.tau_p[5],crslave.tau_p[6],crslave.tau_p[7]);
     // fprintf( crslave.ffp,
@@ -369,6 +387,8 @@ void *slave_control(void *) {
     sleep(5);
     crslave.Move_Goal_Position(finish_pose, ID, JOINT_MIN, JOINT_MAX);
     sleep(5);
+    dprintf(sock, "%s", "**");
+    close(sock);
     crslave.Disable_Dynamixel_Torque(ID);
     crslave.Close_port();
     fclose(crslave.ffp);
@@ -431,6 +451,8 @@ void *slave_control(void *) {
         printf("crslaveの軸%dが速いので終了\n", i);
         crslave.Move_Goal_Position(finish_pose, ID, JOINT_MIN, JOINT_MAX);
         sleep(5);
+        dprintf(sock, "%s", "**");
+        close(sock);
         crslave.Disable_Dynamixel_Torque(ID);
         crslave.Close_port();
         fclose(crslave.ffp);
@@ -442,7 +464,7 @@ void *slave_control(void *) {
     memcpy(&fdr, &fds, sizeof(fd_set));
 
     if (passtime >=
-        4.0) {  ////はじめから6秒経つまで通信はとりあえず行わないようにしている
+        2.0) {  ////はじめから6秒経つまで通信はとりあえず行わないようにしている
       // nanosleep( &t ,NULL );// don't remove.
       ret = select(sock + 1, &fdr, &fdw, NULL, NULL);
 
@@ -454,19 +476,21 @@ void *slave_control(void *) {
           dprintf(sock,
                   "%5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f "
                   "%5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f "
-                  "%5.4f %5.4f",
+                  "%5.4f %5.4f %5.4f %5.4f %5.4f",
                   (float)crslave.present_position[0],
                   (float)crslave.present_position[1],
+                  (float)crslave.present_position[2],
                   (float)crslave.present_position[3],
                   (float)crslave.present_position[4],
                   (float)crslave.present_position[5],
                   (float)crslave.present_position[6],
                   (float)crslave.present_position[7],
                   (float)crslave.d_theta_res[0], (float)crslave.d_theta_res[1],
-                  (float)crslave.d_theta_res[3], (float)crslave.d_theta_res[4],
-                  (float)crslave.d_theta_res[5], (float)crslave.d_theta_res[6],
-                  (float)crslave.d_theta_res[7], (float)crslave.tau_res[0],
-                  (float)crslave.tau_res[1], (float)crslave.tau_res[3],
+                  (float)crslave.d_theta_res[2], (float)crslave.d_theta_res[3],
+                  (float)crslave.d_theta_res[4], (float)crslave.d_theta_res[5],
+                  (float)crslave.d_theta_res[6], (float)crslave.d_theta_res[7],
+                  (float)crslave.tau_res[0], (float)crslave.tau_res[1],
+                  (float)crslave.tau_res[2], (float)crslave.tau_res[3],
                   (float)crslave.tau_res[4], (float)crslave.tau_res[5],
                   (float)crslave.tau_res[6], (float)crslave.tau_res[7],
                   (float)passtime);
@@ -499,13 +523,12 @@ void *slave_control(void *) {
           printf("\n\n");
           sendf = false;
         }
-
       } else if ((t1 + 1) % rnn_ts == 0) {
         if (FD_ISSET(sock, &fdr) && sendf == false) {
           l = recv(sock, rbuf, sizeof(rbuf), 0);
           *(rbuf + l) = 0;
 
-          // printf("-> %d %s\n", i,rbuf );
+          printf("-> %s\n", rbuf);
           sendf = true;
           tp = strtok(rbuf, ",");
 
@@ -528,23 +551,17 @@ void *slave_control(void *) {
           }
           printf("受け取った\n");
         }
-        // printf("\nRNN_angle\t:\t%8.4f\t%8.4f\t%8.4f\t%8.4f\t%8.4f\t%8.4f\n",a[0],a[1],a[2],a[3],a[4],a[5]);
-        // printf("RNN_d_theta_res\t:\t%8.4f\t%8.4f\t%8.4f\t%8.4f\t%8.4f\t%8.4f\n",a[6],a[7],a[8],a[9],a[10],a[11]);
-        // printf("RNN_tau_res\t:\t%8.4f\t%8.4f\t%8.4f\t%8.4f\t%8.4f\t%8.4f\n",a[12],a[13],a[14],a[15],a[16],a[17]);
-        // printf("\n\n");
-      } else {
-        // printf("\nangle\t\t:\t%8.4f\t%8.4f\t%8.4f\n",jointAngles_2[0],jointAngles_2[1],jointAngles_2[2]);
-        // printf("d_theta_res\t:\t%8.4f\t%8.4f\t%8.4f\n",d_theta_res_2[0],d_theta_res_2[1],d_theta_res_2[2]);
-        // printf("tau_res\t\t:\t%5.4f\t%5.4f\t%5.4f\n",tau_res_2[0],tau_res_2[1],tau_res_2[2]);
-        // printf("\n\n");
       }
     }
 
-    pthread_mutex_lock(&mutex);  // すぐなら4.2秒、少し待つなら5.5
+    printf("a1\n");
+    // pthread_mutex_lock(&mutex);// すぐなら4.2秒、少し待つなら5.5
+    printf("a2\n");
+
     if (passtime <=
-        4.6) {  // 4.2     通信始めてからLSTMがなれるまでマージンとってる
+        4.3) {  // 4.2     通信始めてからLSTMがなれるまでマージンとってる
       for (int i = 0; i < JOINT_NUM2; i++) {
-        crslave.goal_position[i] = initial_positioin[i];
+        crslave.goal_position[i] = goal_pose[i];
         crslave.goal_velocity[i] = 0.0;
         crslave.target_torque[i] = 0.0;
         p_th_s_res[i] = crslave.present_position[i];
@@ -579,37 +596,11 @@ void *slave_control(void *) {
         }
       }
     }
-    pthread_mutex_unlock(&mutex);
-    if (passtime <= 4.6) {
-      for (int i = 0; i < JOINT_NUM2; i++) {
-        crslave.tau_p[i] =
-            J[SLAVE][i] / 2.0 *
-            (Kp[SLAVE][i] *
-                 (crslave.goal_position[i] - crslave.present_position[i]) +
-             Kd[SLAVE][i] *
-                 (crslave.goal_velocity[i] - crslave.d_theta_res[i]));
-        //力制御によるトルク参照値
-        crslave.tau_f[i] = Kf[SLAVE][i] / 2.0 *
-                           (-crslave.target_torque[i] - crslave.tau_res[i]);
-        // if(i == 2){
-        //    crslave.goal_torque[i] = crslave.tau_p[i] + crslave.tau_f[i];
-        //}
-        // else{
-        crslave.goal_torque[i] = 0.0
-            :  // crslave.tau_p[i] + crslave.tau_f[i] + crslave.tau_dis[i];
-               //	}
+    printf("b\n");
+    // pthread_mutex_unlock(&mutex);
+    printf("c\n");
 
-               // DOB
-               crslave.dob0[i] = crslave.goal_torque[i] +
-                                 g[i] * J[SLAVE][i] * crslave.d_theta_res[i];
-        crslave.dob1[i] = g[i] * (crslave.dob0[i] - crslave.dob2[i]);
-        crslave.dob2[i] += crslave.dob1[i] * ts;
-
-        //外乱トルクの算出
-        crslave.tau_dis[i] =
-            crslave.dob2[i] - g[i] * J[SLAVE][i] * crslave.d_theta_res[i];
-      }
-    } else {
+    for (int i = 0; i < JOINT_NUM2; i++) {
       crslave.tau_p[i] =
           J[SLAVE][i] / 2.0 *
           (Kp[SLAVE][i] *
@@ -688,6 +679,12 @@ void *slave_control(void *) {
             crslave.target_torque[2], crslave.target_torque[3],
             crslave.target_torque[4], crslave.target_torque[5],
             crslave.target_torque[6], crslave.target_torque[7]);
+    fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,", a[0], a[1], a[2], a[3],
+            a[4], a[5], a[6]);
+    fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,", a[7], a[8], a[9],
+            a[10], a[11], a[12], a[13]);
+    fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,", a[14], a[15], a[16],
+            a[17], a[18], a[19], a[20]);
     // fprintf( crslave.ffp,
     // "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,",crslave.tau_p[0],crslave.tau_p[1],crslave.tau_p[2],crslave.tau_p[3],crslave.tau_p[4],crslave.tau_p[5],crslave.tau_p[6],crslave.tau_p[7]);
     // fprintf( crslave.ffp,
@@ -695,7 +692,7 @@ void *slave_control(void *) {
     // fprintf( crslave.ffp,
     // "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,",crslave.tau_dis[0],crslave.tau_dis[1],crslave.tau_dis[2],crslave.tau_dis[3],crslave.tau_dis[4],crslave.tau_dis[5],crslave.tau_dis[6],crslave.tau_dis[7]);
 
-    crslave.setCranex7Torque(crslave.goal_torque, ID);
+    crslave.setCranex7Torque(crslave.goal_torque, ID);  //こっちもトルクOFF
 
     gettimeofday(&end_time_s, NULL);
     control_time_s = (end_time_s.tv_sec - start_time_s.tv_sec +
@@ -739,6 +736,8 @@ void *keyboard_check(void *) {
       ch = 'b';
     } else if (key == 'q') {
       ch = 'q';
+      dprintf(sock, "%s", "**");
+      close(sock);
 
       break;
     }

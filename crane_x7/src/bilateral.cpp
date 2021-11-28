@@ -12,6 +12,7 @@
 
 #include <iostream>
 #include <string>
+
 // Dynamixel SDK libraryのインクルード
 #include "crane.h"
 #include "crane_x7_comm.h"
@@ -22,6 +23,7 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+
 
 static int connect_mode = 0;
 static int ID[JOINT_NUM] = {2, 3, 4, 5, 6, 7, 8, 9};  // サーボモータのID
@@ -181,10 +183,10 @@ void *slave_control(void *) {
   // cout << "a";
 
   // -------------- camera ------------------------
-  double control_time_camera;
-  long sleep_time_camera;
-  struct timeval start_time_camera;
-  struct timeval end_time_camera;
+  // double control_time_camera;
+  // long sleep_time_camera;
+  // struct timeval start_time_camera;
+  // struct timeval end_time_camera;
 
   /* --------- CR7 の型でcrslaveを定義 ----------- */
   CR7 crslave(devicename1, SLAVE);

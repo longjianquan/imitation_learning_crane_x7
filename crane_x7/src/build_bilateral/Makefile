@@ -23,15 +23,16 @@
 #---------------------------------------------------------------------
 
 # *** ENTER THE TARGET NAME HERE ***
-TARGET      = example_CRANE-X7
+TARGET      = bilateral_CRANE-X7
 
 # important directories used by assorted rules and other variables
-DIR_DXL    = ../../../../DynamixelSDK/c++/
-DIR_OBJS   = .objects
+DIR_INC     = ../../include
+DIR_DXL     = $(DIR_INC)/DynamixelSDK/c++
+DIR_OBJS    = .objects
 
 # compiler options
 CX          = g++ -std=c++11
-CXFLAGS     = -O2 -O3 -DLINUX -D_GNU_SOURCE -Wall $(INCLUDES) $(FORMAT) -g 
+CXFLAGS     = -O2 -O3 -DLINUX -D_GNU_SOURCE -Wall $(INCLUDES) $(FORMAT) -g
 LNKCC       = $(CX)
 LNKFLAGS    = $(CXFLAGS) -Wl,--rpath,$(DIR_DXL)/build/linux64
 FORMAT      = -m64
@@ -39,19 +40,20 @@ FORMAT      = -m64
 #---------------------------------------------------------------------
 # Core components (all of these are likely going to be needed)
 #---------------------------------------------------------------------
-INCLUDES   += -I$(DIR_DXL)/include/dynamixel_sdk
-LIBRARIES  += -L$(DIR_DXL)/build/linux64
+INCLUDES   += -I $(DIR_INC)
+INCLUDES   += -I $(DIR_DXL)/include/dynamixel_sdk
+LIBRARIES  += -L $(DIR_DXL)/build/linux64
 LIBRARIES  += -ldxl_x64_cpp
-LIBRARIES  += -lrt -pthread
-#LIBRARIES  += -lpthread
+LIBRARIES  += -lrt
+LIBRARIES  += -pthread
 
 #---------------------------------------------------------------------s
 # Files
 #---------------------------------------------------------------------
-SOURCES = main.cpp \
+SOURCES = bilateral.cpp \
           crane_x7_comm.cpp \
-		  crane.cpp \
-    # *** OTHER SOURCES GO HERE ***
+          crane.cpp \
+          # *** OTHER SOURCES GO HERE ***
 
 OBJECTS  = $(addsuffix .o,$(addprefix $(DIR_OBJS)/,$(basename $(notdir $(SOURCES)))))
 #OBJETCS += *** ADDITIONAL STATIC LIBRARIES GO HERE ***
