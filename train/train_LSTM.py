@@ -76,7 +76,7 @@ class LSTMTrainer(Tranier):
             input_dim=train_dataset.state_m.shape[-1],
             output_dim=train_dataset.state_m.shape[-1],
             LSTM_dim=400,
-            LSTM_layer_num=5,
+            LSTM_layer_num=6,
         )
 
         optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
@@ -93,7 +93,7 @@ class LSTMTrainer(Tranier):
         )
 
         if wandb_flag:
-            wandb.init(project='LSTMImitation')
+            wandb.init(project='ImitationLearning')
             config = wandb.config
             config.data_path = data_path
             config.batch_size = batch_size
@@ -159,7 +159,8 @@ def argparse():
     from argparse import ArgumentParser
     parser = ArgumentParser()
     parser.add_argument('--data_path', type=str)
-    parser.add_argument('--output_path', type=str, default='./results/test')
+    parser.add_argument('--output_path', type=str,
+        default='./results/LSTM_test/')
     parser.add_argument('--epoch', type=int, default=10000)
     parser.add_argument('--batch_size', type=int, default=16)
     parser.add_argument('--learning_rate', type=float, default=0.001)

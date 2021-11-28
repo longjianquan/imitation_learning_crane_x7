@@ -36,13 +36,14 @@ class TransformerImitation(nn.Module):
         self.pos_encoder = PositionalEncoding(d_model=dim)
         transformer_encoder_layer = nn.TransformerEncoderLayer(
             d_model=dim,
-            nhead=1,
-            dim_feedforward=256,
+            nhead=8,
+            dim_feedforward=2048,
+            # dim_feedforward=256,
             # batch_first=True,
         )
         self.transformer_encoder = nn.TransformerEncoder(
             encoder_layer=transformer_encoder_layer,
-            num_layers=2,
+            num_layers=6,
         )
 
     def forward(self, x: Tensor, mask: Tensor = None) -> Tensor:

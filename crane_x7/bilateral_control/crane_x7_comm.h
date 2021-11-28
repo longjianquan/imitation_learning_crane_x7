@@ -22,13 +22,13 @@
 #ifndef CRANE_X7_CONTROL_H_
 #define CRANE_X7_CONTROL_H_
 
-#include <stdint.h>
 #include <fcntl.h>
+#include <math.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <termios.h>
 #include <unistd.h>
-#include <math.h>
 
 //// Definition of dynamixel ////
 
@@ -78,26 +78,25 @@
 
 // Serial port setting
 #define BAUDRATE (4000000)
-#define SERIAL_PORT "/dev/ttyUSB0" // Check the port which crane-x7 is conected
+#define SERIAL_PORT "/dev/ttyUSB0"  // Check the port which crane-x7 is conected
 #define DEVICENAME "/dev/ttyUSB0"
 
 //// Definition of crane-x7 ////
-#define XM540_W270_JOINT (1) // only 2nd joint servo motor is XM540_W270 (other XM430_W350)
+#define XM540_W270_JOINT \
+  (1)  // only 2nd joint servo motor is XM540_W270 (other XM430_W350)
 
 #ifndef JOINT_NUM
-#define JOINT_NUM (8)////////////////////////////////////
+#define JOINT_NUM (8)  ////////////////////////////////////
 #endif
 
 #ifndef PI
 #define PI (3.14159265)
 #endif
 
-
-#define DXL_MOVING_STATUS_THRESHOLD		20					// Dynamixel moving status threshold
-#define DXL_CENTER_POSITION_VALUE		2048				// Offset(出力軸の中心角度)　(value)
-#define DXL_PROFILE_VELOCITY			30					// サーボモータの動作速度　(rpm)
-#define STDIN_FILENO                    0
-
+#define DXL_MOVING_STATUS_THRESHOLD 20  // Dynamixel moving status threshold
+#define DXL_CENTER_POSITION_VALUE 2048  // Offset(出力軸の中心角度)　(value)
+#define DXL_PROFILE_VELOCITY 30  // サーボモータの動作速度　(rpm)
+#define STDIN_FILENO 0
 
 // Unit conversion
 #define DXL_VALUE_TO_RADIAN ((2 * PI) / 4096)
@@ -107,16 +106,15 @@
 #define CURRENT_TO_TORQUE_XM430W350 (1.783 * TORQUE_CORRECTION_FACTOR)
 #define CURRENT_TO_TORQUE_XM540W270 (2.409 * TORQUE_CORRECTION_FACTOR)
 
-#define JOINT_NUM2 8///////////////////////////
+#define JOINT_NUM2 8  ///////////////////////////
 #define LOOPTIME 2000
 #define LOOPTIME_CAMERA 1000
 
 #define MASTER 0
 #define SLAVE 1
 
-double deg2value( double deg );
-double value2deg( double value);
-
+double deg2value(double deg);
+double value2deg(double value);
 
 double rad2dxlvalue(double rad);
 double dxlvalue2rad(double value);

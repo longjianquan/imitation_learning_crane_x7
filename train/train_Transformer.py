@@ -91,7 +91,7 @@ class TransformerTrainer(Tranier):
         )
 
         if wandb_flag:
-            wandb.init(project='TransformerImitation')
+            wandb.init(project='ImitationLearning')
             config = wandb.config
             config.data_path = data_path
             config.batch_size = batch_size
@@ -158,7 +158,8 @@ def argparse():
     from argparse import ArgumentParser
     parser = ArgumentParser()
     parser.add_argument('--data_path', type=str)
-    parser.add_argument('--output_path', type=str, default='./results/test')
+    parser.add_argument('--output_path', type=str,
+       default='./results/Transformer_test/')
     parser.add_argument('--epoch', type=int, default=10000)
     parser.add_argument('--batch_size', type=int, default=16)
     parser.add_argument('--learning_rate', type=float, default=0.001)
