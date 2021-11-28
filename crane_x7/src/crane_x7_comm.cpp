@@ -1,6 +1,7 @@
 /**
  * @file crane_x7_comm.c
- * @brief Wrapper functions of DynamixelSDK (for communicating with the CRANE-X7)
+ * @brief Wrapper functions of DynamixelSDK (for communicating with the
+ * CRANE-X7)
  * @author RT Corporation
  * @date 2019-2020
  * @copyright License: Apache License, Version 2.0
@@ -22,10 +23,15 @@
 //// Header files //////
 //
 #include "crane_x7_comm.h"
+
 #include "dynamixel_sdk.h"
 
-double deg2value( double deg ){ return (deg + 180) * 4096 / 360; }		// degをvalueに変換(サーボ出力軸の基準を0)(value)
-double value2deg( double value){ return value * 360 / 4096 - 180; }		// valueをdegに変換(サーボ出力軸の基準を0)(deg)
+double deg2value(double deg) {
+  return (deg + 180) * 4096 / 360;
+}  // degをvalueに変換(サーボ出力軸の基準を0)(value)
+double value2deg(double value) {
+  return value * 360 / 4096 - 180;
+}  // valueをdegに変換(サーボ出力軸の基準を0)(deg)
 //
 /**
  * @fn static double rad2dxlvalue(double)
@@ -33,8 +39,7 @@ double value2deg( double value){ return value * 360 / 4096 - 180; }		// valueを
  * @param[in] rad :angle[rad/s]
  * @return value :angle[dynamixel value]
  */
-double rad2dxlvalue(double rad)
-{
+double rad2dxlvalue(double rad) {
   double value = rad / (DXL_VALUE_TO_RADIAN);
   return value;
 }
@@ -45,32 +50,33 @@ double rad2dxlvalue(double rad)
  * @param[in] value :angle[dynamixel value]
  * @return rad :angle[rad/s]
  */
-double dxlvalue2rad(double value)
-{
+double dxlvalue2rad(double value) {
   double rad = value * (DXL_VALUE_TO_RADIAN);
+  // printf("\n");
   return rad;
 }
 
 /**
  * @fn static double angularvel2dxlvalue(double)
- * @brief Anglular velocity unit conversion function from rad/s to dynamixel value
+ * @brief Anglular velocity unit conversion function from rad/s to dynamixel
+ * value
  * @param[in] angular_velocity :anglular velocity[rad/s]
  * @return value :anglular velocity[dynamixel value]
  */
-double angularvel2dxlvalue(double angular_velocity)
-{
+double angularvel2dxlvalue(double angular_velocity) {
   double value = angular_velocity / (DXL_VALUE_TO_ANGULARVEL);
+  // printf("an");
   return value;
 }
 
 /**
  * @fn static double dxlvalue2angularvel(double)
- * @brief Anglular velocity unit conversion function from dynamixel value to rad/s
+ * @brief Anglular velocity unit conversion function from dynamixel value to
+ * rad/s
  * @param[in] value :anglular velocity[dynamixel value]
  * @return angular_velocity :anglular velocity[rad/s]
  */
-double dxlvalue2angularvel(double value)
-{
+double dxlvalue2angularvel(double value) {
   double angular_velocity = value * (DXL_VALUE_TO_ANGULARVEL);
   return angular_velocity;
 }
@@ -81,8 +87,7 @@ double dxlvalue2angularvel(double value)
  * @param[in] current :current[A]
  * @return value :current[dynamixel value]
  */
-double current2dxlvalue(double current)
-{
+double current2dxlvalue(double current) {
   double value = current / (DXL_VALUE_TO_CURRENT);
   return value;
 }
@@ -93,8 +98,7 @@ double current2dxlvalue(double current)
  * @param[in] value :current[dynamixel value]
  * @return current :current[A]
  */
-double dxlvalue2current(double value)
-{
+double dxlvalue2current(double value) {
   double current = value * (DXL_VALUE_TO_CURRENT);
   return current;
 }
@@ -105,8 +109,7 @@ double dxlvalue2current(double value)
  * @param[in] current :current[A]
  * @return torque :torque[Nm]
  */
-double current2torqueXM430W350(double current)
-{
+double current2torqueXM430W350(double current) {
   double torque = current * (CURRENT_TO_TORQUE_XM430W350);
   return torque;
 }
@@ -117,8 +120,7 @@ double current2torqueXM430W350(double current)
  * @param[in] current :current[A]
  * @return torque :torque[Nm]
  */
-double current2torqueXM540W270(double current)
-{
+double current2torqueXM540W270(double current) {
   double torque = current * (CURRENT_TO_TORQUE_XM540W270);
   return torque;
 }
@@ -129,8 +131,7 @@ double current2torqueXM540W270(double current)
  * @param[in] torque :torque[Nm]
  * @return current :current[A]
  */
-double torque2currentXM430W350(double torque)
-{
+double torque2currentXM430W350(double torque) {
   double current = torque / (CURRENT_TO_TORQUE_XM430W350);
   return current;
 }
@@ -141,28 +142,24 @@ double torque2currentXM430W350(double torque)
  * @param[in] torque :torque[Nm]
  * @return current :current[A]
  */
-double torque2currentXM540W270(double torque)
-{
+double torque2currentXM540W270(double torque) {
   double current = torque / (CURRENT_TO_TORQUE_XM540W270);
   return current;
 }
-
 
 /**
  * @fn		int getch()
  * @brief	キーボード入力用の関数(Dynamixel SDK sample)
  * @return	getchar() キー入力
-*/
-int getch()		
-{
-	struct termios oldt, newt;
-	int ch;
-	tcgetattr(STDIN_FILENO, &oldt);
-	newt = oldt;
-	newt.c_lflag &= ~(ICANON | ECHO);
-	tcsetattr(STDIN_FILENO, TCSANOW, &newt);
-	ch = getchar();
-	tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
-	return ch;
+ */
+int getch() {
+  struct termios oldt, newt;
+  int ch;
+  tcgetattr(STDIN_FILENO, &oldt);
+  newt = oldt;
+  newt.c_lflag &= ~(ICANON | ECHO);
+  tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+  ch = getchar();
+  tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+  return ch;
 }
-

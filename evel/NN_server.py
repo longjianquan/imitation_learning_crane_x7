@@ -7,58 +7,61 @@ import cv2
 from PIL import Image
 import os
 
+import sys
+sys.path.append('.')
 from model.SpatialAE import SpatialAE
-from model.LSTMBlock import LSTMBlock
+from model.LSTMImitation import LSTMImitation
+from SocketServer import SocketServer
 
 
-class SocketServer():
-    def __init__(
-        self,
-        host: str = '127.0.0.1',
-        port: int = 10051,
-        backlog: int = 10,
-        bufsize: int = 4096,
-    ):
+# class SocketServer():
+#     def __init__(
+#         self,
+#         host: str = '127.0.0.1',
+#         port: int = 10051,
+#         backlog: int = 10,
+#         bufsize: int = 4096,
+#     ):
 
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        if host == '':
-            host = socket.gethostname()
-        self.socket.bind((host, port))
-        self.socket.listen(backlog)
-        print(f'Server is listening on {host}:{port}')
-        self.bufsize = bufsize
+#         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+#         if host == '':
+#             host = socket.gethostname()
+#         self.socket.bind((host, port))
+#         self.socket.listen(backlog)
+#         print(f'Server is listening on {host}:{port}')
+#         self.bufsize = bufsize
 
-        # accept connection
-        print('Waiting for connection...')
-        self.clientSocket, address = self.socket.accept()
-        print(f'Connection from {address} has been established!')
-        self.clientSocket.send(f'Connected to {host}:{port}'.encode('utf-8'))
+#         # accept connection
+#         print('Waiting for connection...')
+#         self.clientSocket, address = self.socket.accept()
+#         print(f'Connection from {address} has been established!')
+#         self.clientSocket.send(f'Connected to {host}:{port}'.encode('utf-8'))
 
-    def standby(self, callback: callable(str)):
-        try:
-            while True:
-                # receive message
-                msg = self.clientSocket.recv(self.bufsize).decode('utf-8')
-                print(f'receive "{msg}"')
+#     def standby(self, callback: callable(str)):
+#         try:
+#             while True:
+#                 # receive message
+#                 msg = self.clientSocket.recv(self.bufsize).decode('utf-8')
+#                 print(f'receive "{msg}"')
 
-                if msg == 'exit':
-                    break
+#                 if msg == 'exit':
+#                     break
 
-                # calculate callback
-                output = callback(msg).encode('utf-8')
+#                 # calculate callback
+#                 output = callback(msg).encode('utf-8')
 
-                # send message
-                self.clientSocket.send(output)
-                print(f'send "{output}"')
+#                 # send message
+#                 self.clientSocket.send(output)
+#                 print(f'send "{output}"')
 
-        finally:
-            self.socket.close()
-            self.clientSocket.close()
-            print('Disconnect from client')
+#         finally:
+#             self.socket.close()
+#             self.clientSocket.close()
+#             print('Disconnect from client')
 
 
-def callback(msg: str) -> str:
-    return f'receive "{msg}"'
+# def callback(msg: str) -> str:
+#     return f'receive "{msg}"'
 
 
 class ImageServer():
@@ -90,9 +93,9 @@ class AE_LSTM_Server(SocketServer):
         device: torch.device = torch.device('cpu'),
         mean: np.ndarray = None,
         std: np.ndarray = None,
-        input_dim: int = 21,
+        input_dim: int = 24,
         getImage: callable = None,
-        output_dir: str = './result',
+        output_dir: str = './results/images/',
     ):
         self.device = device
         self.mean = mean if mean is not None else np.zeros(input_dim)
@@ -110,12 +113,13 @@ class AE_LSTM_Server(SocketServer):
         self.image_decoder = self.spatialAE.decoder
 
         # load LSTM
-        image_feature_dim = 32
-        self.lstm = LSTMBlock(
+        # image_feature_dim = 32
+        image_feature_dim = 0
+        self.lstm = LSTMImitation(
             input_dim=input_dim+image_feature_dim,
             output_dim=input_dim,
-            LSTM_dim=100,
-            LSTM_layer_num=1,
+            LSTM_dim=400,
+            LSTM_layer_num=5,
         )
         state_dict = self.load_model_param(path_LSTM_param)
         self.lstm.load_state_dict(state_dict)
@@ -157,10 +161,13 @@ class AE_LSTM_Server(SocketServer):
         print('image shape:', image.shape)
 
         image = image.unsqueeze(0)
-        image_feature = self.image_encoder(image)
-        state = torch.cat([state, image_feature.unsqueeze(0)], dim=2)
+        # image_feature = self.image_encoder(image)
+        # state = torch.cat([state, image_feature.unsqueeze(0)], dim=2)
+        
         state_hat, (self.h, self.c) = self.lstm(state, (self.h, self.c))
-        image_hat = self.image_decoder(image_feature, image_size=image.shape[-1])
+        
+        # image_hat = self.image_decoder(
+        #     image_feature, image_size=image.shape[-1])
 
         state_hat = state_hat.cpu().detach().numpy().flatten()
         state_hat = state_hat * self.std + self.mean
@@ -168,13 +175,18 @@ class AE_LSTM_Server(SocketServer):
 
         image = image.squeeze().cpu().detach().numpy()
         image = image.transpose(1, 2, 0)
-        image_hat = image_hat.squeeze().cpu().detach().numpy()
-        image_hat = image_hat.transpose(1, 2, 0)
-        frame = np.concatenate([image, image_hat], axis=1)
+        # image_hat = image_hat.squeeze().cpu().detach().numpy()
+        # image_hat = image_hat.transpose(1, 2, 0)
+        # frame = np.concatenate([image, image_hat], axis=1)
         # self.writer.writeFrame(frame)
         # self.frames.append((255 * frame).astype(np.uint8))
-        frame = Image.fromarray((225 * frame).astype(np.uint8), mode=None)
+        frame = image
+        frame = Image.fromarray((255 * frame).astype(np.uint8), mode=None)
         frame.save(self.output_dir + f'/pred{data[-1]:.3f}.jpg')
+
+        # temporary
+        state_hat = np.delete(state_hat, [2, 10, 18])
+        print('state_hat:', state_hat.shape)
 
         # to string
         msg = ''
@@ -204,7 +216,7 @@ class AE_LSTM_Server(SocketServer):
         )
 
 
-def main():
+def main(args):
     # pytorch device setting
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print('device:', device)
@@ -216,13 +228,26 @@ def main():
 
     server = AE_LSTM_Server(
         device=device,
-        path_AE_param='./model_param/SpatialAE_param.pt',
-        path_LSTM_param='./model_param/LSTM_param.pt',
+        path_AE_param=args.path_AE_param,
+        path_LSTM_param=args.path_LSTM_param,
         getImage=imageServer.getImage,
     )
     server.standby()
     # server.save_gif('result.gif')
 
+def argparse():
+    from argparse import ArgumentParser
+    parser = ArgumentParser()
+    parser.add_argument('--path_AE_param', type=str,
+        default='./model_param/SpatialAE_param.pt')
+    parser.add_argument('--path_LSTM_param', type=str,
+        default='./model_param/LSTM_param.pt')
+    parser.add_argument('--path_output_image', type=str,
+        default='./results/images/')
+    args = parser.parse_args()
+    return args
+
 
 if __name__ == '__main__':
-    main()
+    args = argparse()
+    main(args)

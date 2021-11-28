@@ -22,7 +22,6 @@ class Tranier():
         out_dir: str,
         wandb_flag: bool = False,
         gpu_num: list = [0],
-        early_stopping_count: int = 1000,
     ):
         self.model = model
         self.train_loader = train_loader
@@ -31,7 +30,6 @@ class Tranier():
         self.optimizer = optimizer
         self.out_dir = out_dir
         self.wandb_flag = wandb_flag
-        self.early_stopping_count = early_stopping_count
 
         self.train_losses = []
         self.valid_losses = []
@@ -58,7 +56,12 @@ class Tranier():
         print(f'save to {out_dir}')
 
 
-    def train(self, n_epochs: int, callback: callable(int) = None):
+    def train(
+        self,
+        n_epochs: int,
+        early_stopping_count: int = 1e10,
+        callback: callable(int) = lambda x: None,
+    ):
         for epoch in range(n_epochs + 1):
             start = time.time()
 
@@ -149,7 +152,7 @@ class Tranier():
             else:
                 # Early Stopping
                 self.early_stopping_counter += 1
-                if self.early_stopping_counter >= self.early_stopping_count:
+                if self.early_stopping_counter >= early_stopping_count:
                     print('Early Stopping!')
                     break
 
