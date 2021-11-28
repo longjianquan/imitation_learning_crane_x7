@@ -31,7 +31,7 @@ DIR_OBJS   = .objects
 
 # compiler options
 CX          = g++ -std=c++11
-CXFLAGS     = -O2 -O3 -DLINUX -D_GNU_SOURCE -Wall $(INCLUDES) $(FORMAT) -g 
+CXFLAGS     = -O2 -O3 -DLINUX -D_GNU_SOURCE -Wall $(INCLUDES) $(FORMAT) -g
 LNKCC       = $(CX)
 LNKFLAGS    = $(CXFLAGS) -Wl,--rpath,$(DIR_DXL)/build/linux64
 FORMAT      = -m64
@@ -50,8 +50,8 @@ LIBRARIES  += -lrt -pthread
 #---------------------------------------------------------------------
 SOURCES = main.cpp \
           crane_x7_comm.cpp \
-		  crane.cpp \
-    # *** OTHER SOURCES GO HERE ***
+          crane.cpp \
+# *** OTHER SOURCES GO HERE ***
 
 OBJECTS  = $(addsuffix .o,$(addprefix $(DIR_OBJS)/,$(basename $(notdir $(SOURCES)))))
 #OBJETCS += *** ADDITIONAL STATIC LIBRARIES GO HERE ***
@@ -61,21 +61,21 @@ OBJECTS  = $(addsuffix .o,$(addprefix $(DIR_OBJS)/,$(basename $(notdir $(SOURCES
 # Compiling Rules
 #---------------------------------------------------------------------
 $(TARGET): make_directory $(OBJECTS)
-	$(LNKCC) $(LNKFLAGS) $(OBJECTS) -o $(TARGET) $(LIBRARIES)
+  $(LNKCC) $(LNKFLAGS) $(OBJECTS) -o $(TARGET) $(LIBRARIES)
 
 all: $(TARGET)
 
 clean:
-	rm -rf $(TARGET) $(DIR_OBJS) core *~ *.a *.so *.lo
+  rm -rf $(TARGET) $(DIR_OBJS) core *~ *.a *.so *.lo
 
 make_directory:
-	mkdir -p $(DIR_OBJS)/
+  mkdir -p $(DIR_OBJS)/
 
 $(DIR_OBJS)/%.o: ../%.c
-	$(CC) $(CCFLAGS) -c $? -o $@
+  $(CC) $(CCFLAGS) -c $? -o $@
 
 $(DIR_OBJS)/%.o: ../%.cpp
-	$(CX) $(CXFLAGS) -c $? -o $@
+  $(CX) $(CXFLAGS) -c $? -o $@
 
 #---------------------------------------------------------------------
 # End of Makefile
