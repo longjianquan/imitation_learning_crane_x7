@@ -451,7 +451,8 @@ void *slave_control(void *) {
           a[0] = atof(tp);
 
           for (int l = 1; l < 21; l++) {
-            while (tp = strtok(NULL, ",")) {
+            while (tp != NULL) {
+              tp = strtok(NULL, ",");
               // printf("%s\n", tp);
               a[l] = atof(tp);
               // printf("a[%d] = %5.4f\n",l, a[l]);
