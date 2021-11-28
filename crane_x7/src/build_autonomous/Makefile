@@ -63,21 +63,21 @@ OBJECTS  = $(addsuffix .o,$(addprefix $(DIR_OBJS)/,$(basename $(notdir $(SOURCES
 # Compiling Rules
 #---------------------------------------------------------------------
 $(TARGET): make_directory $(OBJECTS)
-  $(LNKCC) $(LNKFLAGS) $(OBJECTS) -o $(TARGET) $(LIBRARIES)
+	$(LNKCC) $(LNKFLAGS) $(OBJECTS) -o $(TARGET) $(LIBRARIES)
 
 all: $(TARGET)
 
 clean:
-  rm -rf $(TARGET) $(DIR_OBJS) core *~ *.a *.so *.lo
+	rm -rf $(TARGET) $(DIR_OBJS) core *~ *.a *.so *.lo
 
 make_directory:
-  mkdir -p $(DIR_OBJS)/
+	mkdir -p $(DIR_OBJS)/
 
 $(DIR_OBJS)/%.o: ../%.c
-  $(CC) $(CCFLAGS) -c $? -o $@
+	$(CC) $(CCFLAGS) -c $? -o $@
 
 $(DIR_OBJS)/%.o: ../%.cpp
-  $(CX) $(CXFLAGS) -c $? -o $@
+	$(CX) $(CXFLAGS) -c $? -o $@
 
 #---------------------------------------------------------------------
 # End of Makefile
