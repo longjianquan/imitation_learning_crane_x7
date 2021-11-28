@@ -1,4 +1,3 @@
-// *********    Example teaching play back    *********
 #include <fcntl.h>
 #include <math.h>
 #include <pthread.h>
@@ -13,10 +12,9 @@
 #include <iostream>
 #include <string>
 
-// Dynamixel SDK libraryのインクルード
 #include "crane.h"
 #include "crane_x7_comm.h"
-//#include "dynamixel_sdk.h"
+#include "params.h"
 
 // ソケット通信
 #include <arpa/inet.h>
@@ -24,107 +22,15 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
-
 static int connect_mode = 0;
-static int ID[JOINT_NUM] = {2, 3, 4, 5, 6, 7, 8, 9};  // サーボモータのID
-static double JOINT_MIN[JOINT_NUM] = {
-    262, 1024, 262, 228,
-    262, 1024, 148, 1991};  // サーボモータの最小動作角(value)
-static double JOINT_MAX[JOINT_NUM] = {
-    3834, 3072, 3834, 2048,
-    3834, 3072, 3948, 3072};  // サーボモータの最大動作角(value)
-// static double	save_pose[JOINT_NUM]	=
-// {	1.00/*1.68*/,		3.14/*3.27*/,		3.88,		1.40,
-// 3.14, 3.14,		3.14,		3.9};//
-// Move_goal_position関数の引数(rad)後でバイラテ用の位置調べる static double
-// goal_pose[JOINT_NUM]	=
-// {	3.14,		3.32,		3.14,		1.57,		3.14,		2.0,
-// 3.14,		3.84};//
-// Move_goal_position関数の引数(rad)後でバイラテ用の位置調べる static double
-// finish_pose[JOINT_NUM]	=
-// {	1.68,		3.14/*2.81*/,		3.14,
-// 0.45/*0.81*/,		3.16,		3.14,		3.14,		3.9};//
-// Move_goal_position関数の引数(rad)後でバイラテ用の位置調べる static double
-// LIMIT_SPEED[JOINT_NUM]	=
-// {	4.00,   2.50,	3.00,	4.00,	4.50,	5.00,	4.00,	4.00};
-// // 速度の上限値
 
-//********************サーボの位置制御モードでの動作位置の設定********************//
-static double save_pose[JOINT_NUM] = {
-    1.68, 3.14, 3.88, 1.71,
-    3.14, 3.14, 3.14, 3.49134};  // 位置制御モードで一旦行く位置(rad)
-static double goal_pose[JOINT_NUM] = {
-    3.14, 3.14, 3.14, 1.38, 3.14,
-    3.14, 3.14, 4.0};  // 位置制御モードからトルク制御モードに切り替わる時の位置(rad)
-static double finish_pose[JOINT_NUM] = {
-    1.68, 2.81, 3.14, 0.81,
-    3.16, 3.14, 3.14, 3.49134};  // 動作終了時の位置(rad)
-
-//********************サーボのトルク制御モードでの速度リミットの設定********************//
-// static double	LIMIT_SPEED[JOINT_NUM]	=
-// {	5.00,   2.50,	3.00,	4.50,	5.50,	5.50,	5.00,	5.00};
-// // 速度リミット、これを超えたら動作が自動で停止する
-static double LIMIT_SPEED[JOINT_NUM] = {
-    3.00, 2.00, 2.00, 2.50, 4.50,
-    4.50, 4.00, 6.00};  // 速度リミット、これを超えたら動作が自動で停止する
-
-//ココはdegreeなので0中心
-// システム時間　0.002[sec] ?
 static double ts = 0.002;
 // スレーブスレッドのループ回数（=データの管理番号）
 int ttt = 0;
-// static double g[JOINT_NUM] =
-// { 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0};
 static char ch = 'p';
 static double passtime = 0.0;
 
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-// static double J[2][JOINT_NUM] = {{0.012258, 0.11299, 0.012028, 0.04,
-// 0.005676, 0.0066, 0.006281, 0.006891},{0.012258, 0.11299, 0.012028, 0.04,
-// 0.005676, 0.0066, 0.006281, 0.006891}}; static double M[2][3] =
-// {{2.094457, 1.1505, 1.18337},{2.094457, 1.1505, 1.18337}}; static double
-// D[2][6] =
-// {{0.0501,0.242,0.020,0.0391,0.0300,0.021},{0.0501,0.242,0.020,0.0391,0.0300,0.021}};
-
-// static double Kp[2][JOINT_NUM] = {{256., 196, 900., 81., 256., 256., 100.,
-// 256.},{256., 196, 625., 81., 256., 256., 100., 256.}}; static double
-// Kd[2][JOINT_NUM] =
-// {{32., 28., 60., 18., 32., 32., 20., 32.},{32., 28., 25., 18., 32., 32., 20.,
-// 32.}}; static double Kf[2][JOINT_NUM] = {{0.50, 0.50, 1, 0.50, 0.85, 0.75,
-// 0.75, 1.0},{0.50, 0.50, 1, 0.50, 0.85, 0.75, 0.75, 1.0}};
-
-//********************物理パラメータ********************//
-static double J[2][JOINT_NUM] = {
-    {0.012258, 0.11299, 0.012028, 0.04, 0.005676, 0.0066, 0.006281, 0.006891},
-    {0.012258, 0.11299, 0.012028, 0.04, 0.005676, 0.0066, 0.006281,
-     0.006891}};  //慣性
-static double M[2][3] = {{2.094457, 1.1505, 1.18337},
-                         {2.094457, 1.1505, 1.18337}};  //重力補償係数
-static double D[2][6] = {
-    {0.0501, 0.242, 0.040, 0.0391, 0.0500, 0.021},
-    {0.0501, 0.242, 0.040, 0.0391, 0.0500, 0.021}};  //摩擦補償係数
-
-//********************ゲインとカットオフ周波数********************//
-// static double Kp[2][JOINT_NUM] = {{196., 196, 900., 81., 256., 256., 100.,
-// 256.},{196., 196, 625., 81., 256., 256., 100., 256.}}; //usleep時代のPゲイン
-static double Kp[2][JOINT_NUM] = {
-    {256., 196, 961., 144., 289., 324., 144., 324.},
-    {256., 196, 961., 144., 289., 324., 144., 324.}};  // nanosleep時代のPゲイン
-// static double Kd[2][JOINT_NUM] =
-// {{28., 28., 60., 18., 32., 32., 20., 32.},{28., 28., 25., 18., 32., 32., 20.,
-// 32.}};//usleep時代のDゲイン
-static double Kd[2][JOINT_NUM] = {
-    {40., 28., 66., 24., 34., 36., 24., 36.},
-    {40., 28., 66., 24., 34., 36., 24., 36.}};  // nanosleep時代のDゲイン
-// static double Kf[2][JOINT_NUM] = {{0.50, 0.50, 1, 0.50, 0.85, 0.75,
-// 0.75, 1.0},{0.50, 0.50, 1, 0.50, 0.85, 0.75,
-// 0.75, 1.0}};//usleep時代のFゲイン
-static double Kf[2][JOINT_NUM] = {
-    {0.70, 0.70, 1.0, 1.0, 0.80, 1.0, 0.80, 1.0},
-    {0.70, 0.70, 1.0, 1.0, 0.80, 1.0, 0.80, 1.0}};  // nanosleep時代のFゲイン
-static double g[JOINT_NUM] = {
-    15.0, 15.0, 20.0, 20.0,
-    20.0, 20.0, 20.0, 20.0};  //擬似微分、DOBともにカットオフ周波数
 
 static double p_th_m_res[JOINT_NUM], p_dth_m_res[JOINT_NUM],
     p_ddth_m_res[JOINT_NUM];
@@ -137,11 +43,6 @@ const char *devicename2 = "/dev/ttyUSB1";  //こっちがマスター
 
 using namespace std;
 
-/************************************************
-*************************************************
-               camera_control()
-*************************************************
-*************************************************/
 // ---------------------------- ソケット通信　グローバル変数
 struct sockaddr_in addr;
 int sock;
@@ -170,17 +71,11 @@ static int camera_count = 0;
 int camera_active_flag = true;
 int CameraTS = 20;
 
-/************************************************
-*************************************************
-               slave_control()
-*************************************************
-*************************************************/
 void *slave_control(void *) {
   double control_time_s;
   long sleep_time_s;
   struct timeval start_time_s;
   struct timeval end_time_s;
-  // cout << "a";
 
   // -------------- camera ------------------------
   // double control_time_camera;
@@ -212,14 +107,10 @@ void *slave_control(void *) {
     p_tau_s_res[i] = crslave.tau_res[i];
   }
 
-  // cout << "kokomae" << endl;
   sleep(5);
-  // cout << "slave_JOINT_NUM : " << JOINT_NUM << endl;
-  // cout << "slave_JOINT_NUM2 : " << JOINT_NUM2 << endl
   // 設定されているgoal positionに移動（1回目ー＞アームが正面に向く）;
   crslave.Move_Goal_Position(goal_pose, ID, JOINT_MIN, JOINT_MAX);
   sleep(5);
-  // cout << "kokoato" << endl;
   // 電源をOFFにしてから電流制御モードに移行
   crslave.Disable_Dynamixel_Torque(ID);
   // 電流制御モード
@@ -749,11 +640,6 @@ void *slave_control(void *) {
   return NULL;
 }
 
-/****************************************************************
-*****************************************************************
-                  master_control()
-*****************************************************************
-*****************************************************************/
 void *master_control(void *) {
   double control_time_m;
   long sleep_time_m;
@@ -791,10 +677,7 @@ void *master_control(void *) {
   crmaster.Enable_Dynamixel_Torque(ID);
 
   printf("Press b  to start (or press q to quit)\n");
-  printf(
-      "===================================master_p_controlstart==========="
-      "====="
-      "============\n");
+  printf("==========master_p_controlstart==========\n");
   crmaster.ffp = fopen(crmaster.filename2.c_str(), "w");
   fprintf(crmaster.ffp,
           "time,m_presentposition[0],m_presentposition[1],m_presentposition[2],"
@@ -1187,9 +1070,6 @@ void *master_control(void *) {
   return NULL;
 }
 
-/*****************************
-   keyboard_check()
-******************************/
 static char pre_ch = 'p';
 
 void *keyboard_check(void *) {
@@ -1223,9 +1103,6 @@ void *keyboard_check(void *) {
   return NULL;
 }
 
-/*****************************
-    main()
-******************************/
 /**
  * @fn		main()
  * @brief	main

@@ -1,88 +1,30 @@
-
-// *********    Example teaching play back    *********
-//
-//
-#include <arpa/inet.h>
 #include <fcntl.h>
 #include <math.h>
-#include <netinet/in.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/socket.h>
 #include <sys/time.h>
-#include <sys/types.h>
 #include <termios.h>
 #include <time.h>
 #include <unistd.h>
 
 #include <iostream>
-// Dynamixel SDK libraryのインクルード
+
 #include "crane.h"
 #include "crane_x7_comm.h"
-//#include "dynamixel_sdk.h"
+#include "params.h"
 
-static int ID[JOINT_NUM] = {2, 3, 4, 5, 6, 7, 8, 9};  // サーボモータのID
-static double JOINT_MIN[JOINT_NUM] = {
-    262, 1024, 262, 228,
-    262, 1024, 148, 1991};  // サーボモータの最小動作角(value)
-static double JOINT_MAX[JOINT_NUM] = {
-    3834, 3072, 3834, 2048,
-    3834, 3072, 3948, 3072};  // サーボモータの最大動作角(value)
-// static double	save_pose[JOINT_NUM]	=
-// {	2.10,		3.14,		3.54,		1.415,		3.14,		3.34,
-// 3.14,		3.327};	//
-// Move_goal_position関数の引数(rad)後でバイラテ用の位置調べる static double
-// goal_pose[JOINT_NUM]	=
-// {	3.14,		3.14,		3.14,		1.415,		3.14,		3.34,
-// 1.67,		3.327}; //
-// Move_goal_position関数の引数(rad)後でバイラテ用の位置調べる
-static double save_pose[JOINT_NUM] = {
-    1.68, 3.14, 3.88, 1.71,
-    3.14, 3.14, 3.14, 3.49134};  // 位置制御モードで一旦行く位置(rad)
-static double goal_pose[JOINT_NUM] = {3.14, 3.14, 3.14, 1.38,
-                                      3.14, 3.14, 3.14, 4.0};
-static double finish_pose[JOINT_NUM] = {
-    2.10, 3.10, 3.54, 0.45, 3.16,
-    2.94, 3.14, 3.327};  // Move_goal_position関数の引数(rad)後でバイラテ用の位置調べる
-static double LIMIT_SPEED[JOINT_NUM] = {
-    3.00, 2.50, 3.00, 3.00, 4.50,
-    5.00, 6.00, 6.00};  // 速度の上限値暴れた時ように教師データ収集時より下げている
+// socket communication
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <sys/types.h>
 
-// static double	initial_positioin[JOINT_NUM]	=
-// {	3.14,		3.14,		3.14,		1.415,		3.14,		3.34,
-// 1.67,		3.327}; //
-// Move_goal_position関数の引数(rad)後でバイラテ用の位置調べる
-
-//ココはdegreeなので0中心
 static double ts = 0.002;
-static double g[JOINT_NUM] = {10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0};
 int rnn_ts = 10;
 static char ch = 'p';
 static double passtime = 0.0;
-
-// static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-
-// static double J[2][JOINT_NUM] = {{1, 1, 1, 1, 1, 1, 1, 1},{0.5, 0.5, 0.5,
-// 0.5, 0.5, 0.5, 0.5, 0.5}};
-static double J[2][JOINT_NUM] = {
-    {0.012258, 0.11299, 0.012028, 0.04, 0.005676, 0.0066, 0.006281, 0.006891},
-    {0.012258, 0.11299, 0.012028, 0.04, 0.005676, 0.0066, 0.006281, 0.006891}};
-static double M[2][3] = {{2.094457, 1.1505, 1.18337},
-                         {2.094457, 1.1505, 1.38337}};
-static double D[2][6] = {{0.0501, 0.242, 0.020, 0.0391, 0.0300, 0.021},
-                         {0.0501, 0.242, 0.020, 0.0391, 0.0300, 0.021}};
-
-static double Kp[2][JOINT_NUM] = {
-    {256., 196, 900., 81., 256., 256., 100., 256.},
-    {256., 196, 625., 81., 256., 256., 100., 256.}};
-
-static double Kd[2][JOINT_NUM] = {{32., 28., 60., 18., 32., 32., 20., 32.},
-                                  {32., 28., 25., 18., 32., 32., 20., 32.}};
-
-static double Kf[2][JOINT_NUM] = {{0.50, 0.50, 1, 0.50, 0.85, 0.75, 0.75, 1.0},
-                                  {0.50, 0.50, 1, 0.50, 0.85, 0.75, 0.75, 1.0}};
 
 static double p_th_m_res[JOINT_NUM], p_dth_m_res[JOINT_NUM],
     p_ddth_m_res[JOINT_NUM];
@@ -90,11 +32,9 @@ static double p_th_s_res[JOINT_NUM], p_dth_s_res[JOINT_NUM],
     p_ddth_s_res[JOINT_NUM];
 static double p_tau_m_res[JOINT_NUM], p_tau_s_res[JOINT_NUM];
 
-// const char* devicename1 = "/dev/ttyUSB0";//こっちがスレーブ
-// const char* devicename2 = "/dev/ttyUSB1";//こっちがマスター
+const char *devicename1 = "/dev/ttyUSB0";
 
-const char *devicename1 = "/dev/ttyUSB0";  //こっちがスレーブ
-
+// socket communication
 double a[21];
 struct sockaddr_in addr;
 int sock;
@@ -108,8 +48,6 @@ fd_set fds, fdw, fdr;
 
 using namespace std;
 
-///////////////////////////////*******************************************//////////////////////////////////////////
-////////////////////////////////*************slave_control()*********************:////////////////////////////////
 void *slave_control(void *) {
   double control_time_s;
   long sleep_time_s;
@@ -160,11 +98,8 @@ void *slave_control(void *) {
   crslave.Setoperation(CURRENT_CONTROL_MODE, ID);
   crslave.Enable_Dynamixel_Torque(ID);
 
-  printf(
-      "===================================slave_p_controlstart================="
-      "===========\n");
+  printf("=========slave_p_controlstart==========\n");
 
-  // int k = 0;
   crslave.ffp = fopen(crslave.filename2.c_str(), "w");
   fprintf(crslave.ffp,
           "time,s_presentposition[0],s_presentposition[1],s_presentposition[2],"
@@ -191,15 +126,6 @@ void *slave_control(void *) {
   fprintf(crslave.ffp, "a[0],a[1],a[2],a[3],a[4],a[5],a[6],");
   fprintf(crslave.ffp, "a[7],a[8],a[9],a[10],a[11],a[12],a[13],");
   fprintf(crslave.ffp, "a[14],a[15],a[16],a[17],a[18],a[19],a[20],");
-  // fprintf( crslave.ffp,
-  // "tau_p[0],tau_p[1],tau_p[2],tau_p[3],tau_p[4],tau_p[5],tau_p[6],tau_p[7],"
-  // ); fprintf( crslave.ffp,
-  // "tau_f[0],tau_f[1],tau_f[2],tau_f[3],tau_f[4],tau_f[5],tau_f[6],tau_f[7],"
-  // ); fprintf( crslave.ffp,
-  // "tau_dis[0],tau_dis[1],tau_dis[2],tau_dis[3],tau_dis[4],tau_dis[5],tau_dis[6],tau_dis[7],"
-  // ); fprintf( crslave.ffp,
-  // "goalcurrent[0],goalcurrent[1],goalcurrent[2],goalcurrent[3],goalcurrent[4],goalcurrent[5],goalcurrent[6],goalcurrent[7],"
-  // );
   fprintf(crslave.ffp, "sleeptime,controltime\n");
 
   crslave.Readpresent_position(ID);
@@ -353,15 +279,9 @@ void *slave_control(void *) {
             a[10], a[11], a[12], a[13]);
     fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,", a[14], a[15], a[16],
             a[17], a[18], a[19], a[20]);
-    // fprintf( crslave.ffp,
-    // "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,",crslave.tau_p[0],crslave.tau_p[1],crslave.tau_p[2],crslave.tau_p[3],crslave.tau_p[4],crslave.tau_p[5],crslave.tau_p[6],crslave.tau_p[7]);
-    // fprintf( crslave.ffp,
-    // "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,",crslave.tau_f[0],crslave.tau_f[1],crslave.tau_f[2],crslave.tau_f[3],crslave.tau_f[4],crslave.tau_f[5],crslave.tau_f[6],crslave.tau_f[7]);
-    // fprintf( crslave.ffp,
-    // "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,",crslave.tau_dis[0],crslave.tau_dis[1],crslave.tau_dis[2],crslave.tau_dis[3],crslave.tau_dis[4],crslave.tau_dis[5],crslave.tau_dis[6],crslave.tau_dis[7]);
 
-    crslave.setCranex7Torque(crslave.goal_torque,
-                             ID);  //とりあえず怖いのでトルクOFF
+    //とりあえず怖いのでトルクOFF
+    crslave.setCranex7Torque(crslave.goal_torque, ID);
 
     gettimeofday(&end_time_s, NULL);
     control_time_s = (end_time_s.tv_sec - start_time_s.tv_sec +
@@ -396,11 +316,7 @@ void *slave_control(void *) {
   }
 
   ////////////////////////////////ここからバイラテ/////////////////////////////////////////
-  printf(
-      "===================================slave_controlstart==================="
-      "=========\n");
-
-  // int k = 0;
+  printf("==========slave_controlstart==========\n");
 
   while (ch == 'b') {  //データ取得の開始
 
@@ -463,13 +379,9 @@ void *slave_control(void *) {
     memcpy(&fdw, &fds, sizeof(fd_set));
     memcpy(&fdr, &fds, sizeof(fd_set));
 
-    if (passtime >=
-        2.0) {  ////はじめから6秒経つまで通信はとりあえず行わないようにしている
-      // nanosleep( &t ,NULL );// don't remove.
+    // はじめから6秒経つまで通信はとりあえず行わないようにしている
+    if (passtime >= 2.0) {
       ret = select(sock + 1, &fdr, &fdw, NULL, NULL);
-
-      // if ( ret == 0 )	continue;
-      // printf("///////  time : %5.3f  ///////\n",t2);
 
       if (t1 % rnn_ts == 0) {
         if (FD_ISSET(sock, &fdw) && sendf == true) {
@@ -538,10 +450,7 @@ void *slave_control(void *) {
           }
           a[0] = atof(tp);
 
-          for (
-              int l = 1; l < 21;
-              l++)  ////////////////////ココの数字は学習している軸（次元）の数で変更して
-          {
+          for (int l = 1; l < 21; l++) {
             while (tp = strtok(NULL, ",")) {
               // printf("%s\n", tp);
               a[l] = atof(tp);
@@ -554,9 +463,7 @@ void *slave_control(void *) {
       }
     }
 
-    printf("a1\n");
     // pthread_mutex_lock(&mutex);// すぐなら4.2秒、少し待つなら5.5
-    printf("a2\n");
 
     if (passtime <=
         4.3) {  // 4.2     通信始めてからLSTMがなれるまでマージンとってる
@@ -609,13 +516,8 @@ void *slave_control(void *) {
       //力制御によるトルク参照値
       crslave.tau_f[i] =
           Kf[SLAVE][i] / 2.0 * (-crslave.target_torque[i] - crslave.tau_res[i]);
-      // if(i == 2){
-      //    crslave.goal_torque[i] = crslave.tau_p[i] + crslave.tau_f[i];
-      //}
-      // else{
       crslave.goal_torque[i] =
           crslave.tau_p[i] + crslave.tau_f[i] + crslave.tau_dis[i];
-      //	}
 
       // DOB
       crslave.dob0[i] =
@@ -647,8 +549,6 @@ void *slave_control(void *) {
         crslave.tau_dis[6] - D[SLAVE][4] * crslave.d_theta_res[6];
     crslave.tau_res[7] =
         crslave.tau_dis[7] - D[SLAVE][5] * crslave.d_theta_res[7];
-
-    // printf("crslave.target_torque[2] : %lf", crslave.target_torque[2]);
 
     fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,", passtime,
             crslave.present_position[0], crslave.present_position[1],
@@ -685,12 +585,6 @@ void *slave_control(void *) {
             a[10], a[11], a[12], a[13]);
     fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,", a[14], a[15], a[16],
             a[17], a[18], a[19], a[20]);
-    // fprintf( crslave.ffp,
-    // "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,",crslave.tau_p[0],crslave.tau_p[1],crslave.tau_p[2],crslave.tau_p[3],crslave.tau_p[4],crslave.tau_p[5],crslave.tau_p[6],crslave.tau_p[7]);
-    // fprintf( crslave.ffp,
-    // "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,",crslave.tau_f[0],crslave.tau_f[1],crslave.tau_f[2],crslave.tau_f[3],crslave.tau_f[4],crslave.tau_f[5],crslave.tau_f[6],crslave.tau_f[7]);
-    // fprintf( crslave.ffp,
-    // "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,",crslave.tau_dis[0],crslave.tau_dis[1],crslave.tau_dis[2],crslave.tau_dis[3],crslave.tau_dis[4],crslave.tau_dis[5],crslave.tau_dis[6],crslave.tau_dis[7]);
 
     crslave.setCranex7Torque(crslave.goal_torque, ID);  //こっちもトルクOFF
 
@@ -723,8 +617,6 @@ void *slave_control(void *) {
   fclose(crslave.ffp);
   return NULL;
 }
-////////////////////////////////**********************************:////////////////////////////////
-////////////////////*****************************keyboard_check()***************/////////////////////////////////////////////////////
 
 void *keyboard_check(void *) {
   char key;
@@ -744,8 +636,6 @@ void *keyboard_check(void *) {
   }
   return NULL;
 }
-////////////////////////////////**********************************:////////////////////////////////
-////////////////////////////////*****************main()*************:////////////////////////////////
 
 /**
  * @fn		main()
@@ -781,4 +671,3 @@ int main() {
 
   return 0;
 }
-////////////////////////////////**********************************:////////////////////////////////

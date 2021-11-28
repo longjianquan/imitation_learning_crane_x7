@@ -168,7 +168,6 @@ int CR7::Readpresent_velocity(int ID[JOINT_NUM]) {
     dxl_present_velocity = groupBulkRead->getData(
         ID[i], PRESENT_VELOCITY_ADDRESS,
         PRESENT_VELOCITY_DATA_LENGTH);  //返信データから指定のデータを読む
-    // printf("[ ID[%d] : %lf ]", ID[i], value2deg(dxl_present_velocity));
     present_velocity[i] = dxlvalue2angularvel(dxl_present_velocity);
   }
   return 0;
@@ -179,8 +178,6 @@ int CR7::Readpresent_torque(int ID[JOINT_NUM]) {
     dxl_addparam_result = groupBulkRead->addParam(
         ID[i], PRESENT_CURRENT_ADDRESS,
         PRESENT_CURRENT_DATA_LENGTH);  //読み込みのデータを設定(現在角度)
-    // if( dxl_addparam_result != true) printf(" ID[%d] : groupBulkRead addParam
-    // failed\n", ID[i]);
 
     // Bulkread present position
     dxl_comm_result = groupBulkRead->txRxPacket();  //返信データの読み込み
@@ -196,7 +193,6 @@ int CR7::Readpresent_torque(int ID[JOINT_NUM]) {
     dxl_present_torque = groupBulkRead->getData(
         ID[i], PRESENT_CURRENT_ADDRESS,
         PRESENT_CURRENT_DATA_LENGTH);  //返信データから指定のデータを読む
-    // printf("[ ID[%d] : %lf ]", ID[i], value2deg(dxl_present_torque));
 
     if (i == XM540_W270_JOINT) {
       present_torque[i] =
@@ -245,9 +241,7 @@ bool CR7::Set_port_baudrate() {
   }
 }
 
-int CR7::setCranex7Torque(double *torque_array,
-                          int ID[JOINT_NUM]) {  //,FILE *fp){
-  // int16_t goal_current[JOINT_NUM] = {0,0,0,0,0,0,0,0};
+int CR7::setCranex7Torque(double *torque_array, int ID[JOINT_NUM]) {
   for (int i = 0; i < JOINT_NUM2; i++) {
     if (i == XM540_W270_JOINT) {
       goal_current[i] =
@@ -310,6 +304,7 @@ bool CR7::Setoperation(int Operationmode, int ID[JOINT_NUM]) {
 
   return 0;
 }
+
 /**
  * @fn		void Enable_Dynamixel_Torque()
  * @brief	全サーボのトルクをONにする
@@ -378,83 +373,6 @@ void CR7::Disable_Dynamixel_Torque(int ID[JOINT_NUM]) {
  * @param	goal_pose[8](static double goal_pose[8])
  * サーボの個数分のデータ(deg)
  */
-/*
-void CR7::Move_Goal_Position( double *goal_pose, int ID[JOINT_NUM], double
-JOINT_MIN[JOINT_NUM], double JOINT_MAX[JOINT_NUM]){
-    //Move target goal position
-
-    for(int i=0;i<JOINT_NUM2;i++){
-        printf("[ ID[%d] : %lf ]", ID[i], goal_pose[i]);
-//指定したサーボとデータの確認 if((JOINT_MIN[i] > deg2value(goal_pose[i])) ||
-(JOINT_MAX[i] < deg2value(goal_pose[i]))){
-//動作角度外の角度が入力された場合 printf("over range!\n"); for(int
-j=0;j<JOINT_NUM2;j++){ if(j == 1){ goal_pose[j] = -10.0;
-                }
-                else if(j == 3){
-                    goal_pose[j] = -158.0;
-                }
-                else{
-                    goal_pose[j] = 0.0;
-                }
-
-                param_goal_position[0] =
-DXL_LOBYTE(DXL_LOWORD(deg2value(goal_pose[j])));
-//通信用にデータを分ける param_goal_position[1] =
-DXL_HIBYTE(DXL_LOWORD(deg2value(goal_pose[j]))); param_goal_position[2] =
-DXL_LOBYTE(DXL_HIWORD(deg2value(goal_pose[j]))); param_goal_position[3] =
-DXL_HIBYTE(DXL_HIWORD(deg2value(goal_pose[j])));
-
-                dxl_addparam_result = groupBulkWrite->addParam(ID[j],
-GOAL_POSITION_ADDRESS, GOAL_POSITION_DATA_LENGTH, param_goal_position);
-//書き込み用のパケットに追加 if(dxl_addparam_result != true) printf("goal pose
-error!\n");
-
-            }printf("\n");
-
-            // Bulkwrite goal position
-            dxl_comm_result = groupBulkWrite->txPacket();
-            if (dxl_comm_result != COMM_SUCCESS) printf("%s\n",
-packetHandler->getTxRxResult(dxl_comm_result));
-
-            // Clear bulkwrite parameter storage
-            groupBulkWrite->clearParam();
-            sleep(4);
-            Disable_Dynamixel_Torque(ID);
-            Close_port();
-            exit(1);
-        }
-
-
-        param_goal_position[0] =
-DXL_LOBYTE(DXL_LOWORD(deg2value(goal_pose[i])));
-//通信用にデータを分ける param_goal_position[1] =
-DXL_HIBYTE(DXL_LOWORD(deg2value(goal_pose[i]))); param_goal_position[2] =
-DXL_LOBYTE(DXL_HIWORD(deg2value(goal_pose[i]))); param_goal_position[3] =
-DXL_HIBYTE(DXL_HIWORD(deg2value(goal_pose[i])));
-
-        dxl_addparam_result = groupBulkWrite->addParam(ID[i],
-GOAL_POSITION_ADDRESS, GOAL_POSITION_DATA_LENGTH, param_goal_position);
-//書き込み用のパケットに追加 if(dxl_addparam_result != true) printf("goal pose
-error!\n");
-
-    }printf("\n");
-
-    // Bulkwrite goal position
-    dxl_comm_result = groupBulkWrite->txPacket();
-    if (dxl_comm_result != COMM_SUCCESS) printf("%s\n",
-packetHandler->getTxRxResult(dxl_comm_result));
-
-    // Clear bulkwrite parameter storage
-    groupBulkWrite->clearParam();
-}
-*/
-
-/**
- * @fn		void Move_Goal_Position()
- * @brief	設定してあるGoal Positionへ移動
- * @param	goal_pose[8](static double goal_pose[8])
- * サーボの個数分のデータ(deg)
- */
 void CR7::Move_Goal_Position(double *goal_pose, int ID[JOINT_NUM],
                              double JOINT_MIN[JOINT_NUM],
                              double JOINT_MAX[JOINT_NUM]) {
@@ -472,42 +390,6 @@ void CR7::Move_Goal_Position(double *goal_pose, int ID[JOINT_NUM],
           "リーチングで変な値が入ったので200秒停止してプログラムを終了します。"
           "\n");
       printf("停止ボタンを押して、CRANEを安全な姿勢にしてCtrl+c !!\n");
-      /*
-      for(int j=0;i<JOINT_NUM2;j++){
-          if(j == 1){
-              goal_pose[j] = 2.97;
-          }
-          else if(j == 3){
-              goal_pose[j] = 0.38;
-          }
-          else{
-              goal_pose[j] = 0.0;
-          }
-
-          param_goal_position[0] =
-      DXL_LOBYTE(DXL_LOWORD(rad2dxlvalue(goal_pose[i])));
-      //通信用にデータを分ける param_goal_position[1] =
-      DXL_HIBYTE(DXL_LOWORD(rad2dxlvalue(goal_pose[i]))); param_goal_position[2]
-      = DXL_LOBYTE(DXL_HIWORD(rad2dxlvalue(goal_pose[i])));
-          param_goal_position[3] =
-      DXL_HIBYTE(DXL_HIWORD(rad2dxlvalue(goal_pose[i])));
-
-          dxl_addparam_result = groupBulkWrite->addParam(ID[i],
-      GOAL_POSITION_ADDRESS, GOAL_POSITION_DATA_LENGTH, param_goal_position);
-      //書き込み用のパケットに追加 if(dxl_addparam_result != true) printf("goal
-      pose error!\n");
-
-      }printf("\n");
-
-      // Bulkwrite goal position
-      dxl_comm_result = groupBulkWrite->txPacket();
-      if (dxl_comm_result != COMM_SUCCESS) printf("%s\n",
-      packetHandler->getTxRxResult(dxl_comm_result));
-
-      // Clear bulkwrite parameter storage
-      groupBulkWrite->clearParam();
-      */
-
       sleep(4);
       printf("あと4秒\n");
       Disable_Dynamixel_Torque(ID);
