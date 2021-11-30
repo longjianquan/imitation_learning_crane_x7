@@ -132,8 +132,11 @@ class TransformerServer(SocketServer):
 
         # to string
         msg = ''
-        for y_element in state_hat[:self.input_dim]:
-            msg += f'{y_element.item()},'
+        for y_element in state_hat:
+            if y_element == state_hat[-1]:
+                msg += f'{y_element.item()}'
+            else:
+                msg += f'{y_element.item()},'
         return msg
 
     def load_model_param(self, filepath):

@@ -22,7 +22,7 @@
 #include <sys/types.h>
 
 static double ts = 0.002;
-int rnn_ts = 10;
+int rnn_ts = 20;
 static char ch = 'p';
 static double passtime = 0.0;
 
@@ -280,7 +280,6 @@ void *slave_control(void *) {
     fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,", a[14], a[15], a[16],
             a[17], a[18], a[19], a[20]);
 
-    //とりあえず怖いのでトルクOFF
     crslave.setCranex7Torque(crslave.goal_torque, ID);
 
     gettimeofday(&end_time_s, NULL);
@@ -453,14 +452,14 @@ void *slave_control(void *) {
           // printf("b\n");
 
           for (int l = 0; l < 21; l++) {
-            while (tp != NULL) {
-              a[l] = atof(tp);
-              printf("a[%d] = %5.4f\n",l, a[l]);
-              tp = strtok(NULL, ",");
-              printf("%s\n", tp);
-              // l++;
-            }
+          // while (tp != NULL) {
+            a[l] = atof(tp);
+            printf("a[%d] = %5.4f\n",l, a[l]);
+            tp = strtok(NULL, ",");
+            // printf("%s\n", tp);
+            // l++;
           }
+          // }
           printf("受け取った\n");
         }
       }
@@ -588,7 +587,7 @@ void *slave_control(void *) {
     fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,", a[14], a[15], a[16],
             a[17], a[18], a[19], a[20]);
 
-    crslave.setCranex7Torque(crslave.goal_torque, ID);  //こっちもトルクOFF
+    crslave.setCranex7Torque(crslave.goal_torque, ID);
 
     gettimeofday(&end_time_s, NULL);
     control_time_s = (end_time_s.tv_sec - start_time_s.tv_sec +
