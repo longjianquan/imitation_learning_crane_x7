@@ -443,20 +443,22 @@ void *slave_control(void *) {
           printf("-> %s\n", rbuf);
           sendf = true;
           tp = strtok(rbuf, ",");
+          printf("a\n");
 
           if (tp == NULL) {
             cout << "break2だよ\n" << endl;
             break;
           }
-          a[0] = atof(tp);
+          // a[0] = atof(tp);
+          // printf("b\n");
 
-          for (int l = 1; l < 21; l++) {
+          for (int l = 0; l < 21; l++) {
             while (tp != NULL) {
-              tp = strtok(NULL, ",");
-              // printf("%s\n", tp);
               a[l] = atof(tp);
-              // printf("a[%d] = %5.4f\n",l, a[l]);
-              l++;
+              printf("a[%d] = %5.4f\n",l, a[l]);
+              tp = strtok(NULL, ",");
+              printf("%s\n", tp);
+              // l++;
             }
           }
           printf("受け取った\n");
@@ -466,14 +468,13 @@ void *slave_control(void *) {
 
     // pthread_mutex_lock(&mutex);// すぐなら4.2秒、少し待つなら5.5
 
-    if (passtime <=
-        4.3) {  // 4.2     通信始めてからLSTMがなれるまでマージンとってる
+    // 4.2     通信始めてからLSTMがなれるまでマージンとってる
+    if (passtime <= 4.3) {
       for (int i = 0; i < JOINT_NUM2; i++) {
         crslave.goal_position[i] = goal_pose[i];
         crslave.goal_velocity[i] = 0.0;
         crslave.target_torque[i] = 0.0;
         p_th_s_res[i] = crslave.present_position[i];
-        ;
         p_dth_s_res[i] = crslave.d_theta_res[i];
         p_tau_s_res[i] = crslave.tau_res[i];
       }

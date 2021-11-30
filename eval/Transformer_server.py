@@ -55,6 +55,7 @@ class TransformerServer(SocketServer):
         self.input_dim = input_dim
         self.getImage = getImage
         self.frames = []
+        self.memory_size = memory_size
 
         # load Spatial Auto Encoder
         self.spatialAE = SpatialAE()
@@ -70,8 +71,9 @@ class TransformerServer(SocketServer):
         self.transformer.load_state_dict(state_dict)
         self.transformer = self.transformer.to(device)
 
-        self.memory = [torch.zeros((1, 1, input_dim)).to(device)] * memory_size
-        self.memory = deque(self.memory, maxlen=memory_size)
+        # self.memory = [torch.zeros((1, 1, input_dim)).to(device)] * memory_size
+        # self.memory = deque(self.memory, maxlen=memory_size)
+        self.memory = None
 
         self.path_output_image = path_output_image
         os.makedirs(path_output_image, exist_ok=True)
@@ -92,7 +94,11 @@ class TransformerServer(SocketServer):
         image = image.to(self.device)
 
         state = state.unsqueeze(0).unsqueeze(0)
-        self.memory.append(state)
+        if self.memory is None:
+            self.memory = [state] * self.memory_size
+            self.memory = deque(self.memory, maxlen=self.memory_size)
+        else:
+            self.memory.append(state)
         memory = torch.cat(list(self.memory), dim=1)
 
         print('state shape:', state.shape)
