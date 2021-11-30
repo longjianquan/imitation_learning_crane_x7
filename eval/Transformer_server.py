@@ -4,6 +4,8 @@ from torchvision import transforms
 import cv2
 from PIL import Image
 import os
+from collections import deque
+
 
 import sys
 sys.path.append('.')
@@ -45,14 +47,11 @@ class TransformerServer(SocketServer):
         host: str = '127.0.0.1',
         port: int = 10051,
         device: torch.device = torch.device('cpu'),
-        mean: np.ndarray = None,
-        std: np.ndarray = None,
         input_dim: int = 24,
         getImage: callable = None,
+        memory_size: int = 1000,
     ):
         self.device = device
-        self.mean = mean if mean is not None else np.zeros(input_dim)
-        self.std = std if std is not None else np.ones(input_dim)
         self.input_dim = input_dim
         self.getImage = getImage
         self.frames = []
@@ -71,7 +70,8 @@ class TransformerServer(SocketServer):
         self.transformer.load_state_dict(state_dict)
         self.transformer = self.transformer.to(device)
 
-        self.memory = []
+        self.memory = [torch.zeros((1, 1, input_dim)).to(device)] * memory_size
+        self.memory = deque(self.memory, maxlen=memory_size)
 
         self.path_output_image = path_output_image
         os.makedirs(path_output_image, exist_ok=True)
@@ -87,15 +87,13 @@ class TransformerServer(SocketServer):
         state = data[:self.input_dim]
         image = self.getImage()
 
-        # prediction
-        state = (state - self.mean) / self.std
-
+        # format
         state = torch.from_numpy(state.astype(np.float32)).to(self.device)
         image = image.to(self.device)
 
         state = state.unsqueeze(0).unsqueeze(0)
         self.memory.append(state)
-        memory = torch.cat(self.memory, dim=1)
+        memory = torch.cat(list(self.memory), dim=1)
 
         print('state shape:', state.shape)
         print('image shape:', image.shape)
@@ -104,23 +102,20 @@ class TransformerServer(SocketServer):
         image = image.unsqueeze(0)
         # image_feature = self.image_encoder(image)
         # state = torch.cat([state, image_feature.unsqueeze(0)], dim=2)
+
+        # prediction
         state_hat = self.transformer(memory)[:, -1]
+
         # image_hat = self.image_decoder(
         #     image_feature, image_size=image.shape[-1])
 
         print('state_hat:', state_hat.shape)
         state_hat = state_hat.cpu().detach().numpy().flatten()
-        state_hat = state_hat * self.std + self.mean
         print('state_hat:', state_hat)
 
         image = image.squeeze().cpu().detach().numpy()
         image = image.transpose(1, 2, 0)
-        # image_hat = image_hat.squeeze().cpu().detach().numpy()
-        # image_hat = image_hat.transpose(1, 2, 0)
-        # frame = np.concatenate([image, image_hat], axis=1)
         frame = image
-        # self.writer.writeFrame(frame)
-        # self.frames.append((255 * frame).astype(np.uint8))
         frame = Image.fromarray((225 * frame).astype(np.uint8), mode=None)
         frame.save(os.path.join(
             self.path_output_image, f'pred{data[-1]:.3f}.jpg'))
