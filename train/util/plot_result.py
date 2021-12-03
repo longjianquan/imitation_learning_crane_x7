@@ -38,17 +38,17 @@ def plot_state(state_ans, state_hat, DoF=8):
     tau_hat = state_hat[2*DoF:3*DoF]
 
     for i in range(DoF):
-        ax[i, 0].plot(rad2deg(theta_ans[i]), color='tab:gray', label='teather')
+        ax[i, 0].plot(rad2deg(theta_ans[i]), color='tab:gray', label='teacher')
         ax[i, 0].plot(rad2deg(theta_hat[i]), color='tab:blue', label='predict')
         ax[i, 0].set_ylabel(r'$\theta_' + str(i) + '$ [deg]')
         ax[i, 0].set_ylim([-10, 370])
         ax[i, 0].set_yticks(range(0, 370, 90))
 
-        ax[i, 1].plot(rad2deg(omega_ans[i]), color='tab:gray', label='teather')
+        ax[i, 1].plot(rad2deg(omega_ans[i]), color='tab:gray', label='teacher')
         ax[i, 1].plot(rad2deg(omega_hat[i]), color='tab:blue', label='predict')
         ax[i, 1].set_ylabel(r'$\.{\theta}_' + str(i) + '$ [deg/s]')
 
-        ax[i, 2].plot(tau_ans[i], color='tab:gray', label='teather')
+        ax[i, 2].plot(tau_ans[i], color='tab:gray', label='teacher')
         ax[i, 2].plot(tau_hat[i], color='tab:blue', label='predict')
         ax[i, 2].set_ylabel(r'$\tau_' + str(i) + '$ [Nm]')
 

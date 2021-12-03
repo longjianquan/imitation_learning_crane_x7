@@ -35,6 +35,10 @@ class Conv4Imitation(nn.Module):
         return y
 
     def forward(self, x):
+        """
+        Args:
+            x: Tensor, shape [batch_size, embedding_dim, seq_len]
+        """
         x = self.padding(x)
         y = self.layer(x)
         return y
@@ -52,22 +56,19 @@ class CNNImitation(nn.Module):
         conv_list = []
         for i in range(len(channels)-1):
             conv_list.append(
-                # nn.Conv1d(
                 Conv4Imitation(
                     channels[i],
                     channels[i+1],
-                    # kernel_size=3,
-                    # stride=1,
-                    # padding=1,
-                    # padding_mode='replicate',
                     dropout=dropout,
                 ))
-            # conv_list.append(nn.Dropout(dropout))
-            # conv_list.append(nn.ReLU())
         self.conv = nn.Sequential(*conv_list)
         self.linear = nn.Linear(dim, dim)
 
     def forward(self, x):
+        """
+        Args:
+            x: Tensor, shape [batch_size, seq_len, embedding_dim]
+        """
         x = x.permute(0, 2, 1) # (batch, dim, time)
         x = self.conv(x)
         x = x.permute(0, 2, 1) # (batch, time, dim)
