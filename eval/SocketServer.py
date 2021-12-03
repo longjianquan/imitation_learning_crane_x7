@@ -30,7 +30,7 @@ class SocketServer():
                 msg = self.clientSocket.recv(self.bufsize).decode('utf-8')
                 print(f'receive "{msg}"')
 
-                if msg == 'exit':
+                if msg == 'exit' or msg == '**':
                     break
 
                 # calculate callback
