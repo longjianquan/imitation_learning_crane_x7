@@ -133,9 +133,9 @@ class TransformerServer(SocketServer):
         print('state_hat:', state_hat.shape)
 
         # LPF
-        if self.state_hat_old == None:
+        if self.state_hat_old is None:
             self.state_hat_old = state_hat
-        state_hat = self.state_hat_old * 0.9 + state * 0.1
+        state_hat = self.state_hat_old * 0.9 + state_hat * 0.1
         self.state_hat_old = state_hat
 
         # to string
