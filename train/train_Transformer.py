@@ -12,15 +12,16 @@ sns.set()
 import sys
 sys.path.append('.')
 from train.trainer import Tranier
-from model.SpatialAE import SpatialAE
+# from model.SpatialAE import SpatialAE
 # from dataset.motion_image_dataset import MotionImageDataset
 from dataset.motion_dataset import MotionDataset
 from dataset.fast_dataloader import FastDataLoader
 from model.TransformerImitation import TransformerImitation
+from model.CNNImitation import CNNImitation
 from util.plot_result import *
 
 
-class TransformerTrainer(Tranier):
+class BCTrainer(Tranier):
     def __init__(
         self,
         data_path: str,
@@ -74,7 +75,8 @@ class TransformerTrainer(Tranier):
         print('train data num:', len(train_dataset))
         print('valid data num:', len(valid_dataset))
 
-        model = TransformerImitation(dim=train_dataset.state_m.shape[-1])
+        # model = TransformerImitation(dim=train_dataset.state_m.shape[-1])
+        model = CNNImitation(dim=train_dataset.state_m.shape[-1])
 
         optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
@@ -109,7 +111,6 @@ class TransformerTrainer(Tranier):
         y = y['state'].to(self.device)
 
         pred = self.model(x)
-        # print(pred)
         loss = self.loss_fn(y, pred)
 
         self.y = y
@@ -124,7 +125,6 @@ class TransformerTrainer(Tranier):
             state_ans = state_ans.cpu().detach().numpy().copy()
             pred = pred.cpu().detach().numpy().copy()
             fig_state = plot_state(state_ans, pred)
-            # fig_state.suptitle('{} epoch'.format(epoch))
             fig_state.suptitle('{} epoch'.format(epoch))
             path_state_png = os.path.join(self.out_dir, 'state.png')
             fig_state.savefig(path_state_png)
@@ -137,14 +137,16 @@ class TransformerTrainer(Tranier):
                 })
                 wandb.save(path_state_png)
 
+            plt.close()
+
     def train(self, n_epochs: int):
         return super().train(n_epochs, callback=self.plot_result)
 
 
 def main(args):
-    TransformerTrainer(
-        data_path=args.data_path,
-        out_dir=args.output_path,
+    BCTrainer(
+        data_path=args.data,
+        out_dir=args.output,
         batch_size=args.batch_size,
         learning_rate=args.learning_rate,
         image_size=args.image_size,
@@ -156,9 +158,8 @@ def main(args):
 def argparse():
     from argparse import ArgumentParser
     parser = ArgumentParser()
-    parser.add_argument('--data_path', type=str)
-    parser.add_argument('--output_path', type=str,
-       default='./results/Transformer_test/')
+    parser.add_argument('--data', type=str)
+    parser.add_argument('--output', type=str, default='./results/BC_test/')
     parser.add_argument('--epoch', type=int, default=10000)
     parser.add_argument('--batch_size', type=int, default=16)
     parser.add_argument('--learning_rate', type=float, default=0.001)

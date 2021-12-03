@@ -35,14 +35,16 @@ class TransformerImitation(nn.Module):
         self.pos_encoder = PositionalEncoding(d_model=dim)
         transformer_encoder_layer = nn.TransformerEncoderLayer(
             d_model=dim,
-            nhead=8,
-            dim_feedforward=2048,
-            # dim_feedforward=256,
+            # nhead=8,
+            nhead=4,
+            # dim_feedforward=2048,
+            dim_feedforward=256,
             # batch_first=True,
         )
         self.transformer_encoder = nn.TransformerEncoder(
             encoder_layer=transformer_encoder_layer,
-            num_layers=2,
+            # num_layers=2,
+            num_layers=1,
         )
         self.linear = nn.Linear(dim, dim)
 
@@ -53,9 +55,9 @@ class TransformerImitation(nn.Module):
             mask: Tensor, shape [batch_size, seq_len]
         """
         x = self.pos_encoder(x)
-        x = x.permute(1, 0, 2) # [seq_len, batch_size, embedding_dim]
+        x = x.permute(1, 0, 2) # (time, batch, dim)
         y = self.transformer_encoder(x, mask=mask)
-        y = y.permute(1, 0, 2) # [batch_size, seq_len, embedding_dim]
+        y = y.permute(1, 0, 2) # (batch, time, dim)
         y = self.linear(y)
 
         return y

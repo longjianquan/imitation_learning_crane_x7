@@ -121,23 +121,25 @@ class LSTMTrainer(Tranier):
 
     def plot_result(self, epoch: int):
         if epoch % 10 == 0:
-            self.fig_state.clf()
             state_ans = self.y[0].cpu()
             pred = self.pred[0].cpu()
             state_ans = state_ans.cpu().detach().numpy().copy()
             pred = pred.cpu().detach().numpy().copy()
-            plot_state(self.fig_state, state_ans, pred, col=3)
-            self.fig_state.suptitle('{} epoch'.format(epoch))
+            fig_state = plot_state(state_ans, pred)
+            # fig_state.suptitle('{} epoch'.format(epoch))
+            fig_state.suptitle('{} epoch'.format(epoch))
             path_state_png = os.path.join(self.out_dir, 'state.png')
-            self.fig_state.savefig(path_state_png)
+            fig_state.savefig(path_state_png)
 
             # upload to wandb
             if self.wandb_flag:
                 wandb.log({
                     'epoch': epoch,
-                    'state': wandb.Image(self.fig_state),
+                    'state': wandb.Image(fig_state),
                 })
                 wandb.save(path_state_png)
+
+            plt.close()
 
     def train(self, n_epochs: int):
         return super().train(n_epochs, callback=self.plot_result)
