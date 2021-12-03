@@ -78,6 +78,8 @@ class TransformerServer(SocketServer):
         self.path_output_image = path_output_image
         os.makedirs(path_output_image, exist_ok=True)
 
+        self.state_hat_old = None
+
         super().__init__(host, port)
 
     def standby(self):
@@ -122,7 +124,7 @@ class TransformerServer(SocketServer):
         image = image.squeeze().cpu().detach().numpy()
         image = image.transpose(1, 2, 0)
         frame = image
-        frame = Image.fromarray((225 * frame).astype(np.uint8), mode=None)
+        frame = Image.fromarray((255 * frame).astype(np.uint8), mode=None)
         frame.save(os.path.join(
             self.path_output_image, f'pred{data[-1]:.3f}.jpg'))
 
@@ -130,13 +132,14 @@ class TransformerServer(SocketServer):
         state_hat = np.delete(state_hat, [2, 10, 18])
         print('state_hat:', state_hat.shape)
 
+        # LPF
+        if self.state_hat_old == None:
+            self.state_hat_old = state_hat
+        state_hat = self.state_hat_old * 0.9 + state * 0.1
+        self.state_hat_old = state_hat
+
         # to string
-        msg = ''
-        for y_element in state_hat:
-            if y_element == state_hat[-1]:
-                msg += f'{y_element.item()}'
-            else:
-                msg += f'{y_element.item()},'
+        msg = ','.join(state_hat.astype(np.str))
         return msg
 
     def load_model_param(self, filepath):
@@ -172,8 +175,8 @@ def main(args):
 
     server = TransformerServer(
         device=device,
-        path_AE_param=args.path_AE_param,
-        path_Transformer_param=args.path_Transformer_param,
+        path_AE_param=args.model_AE,
+        path_Transformer_param=args.model,
         path_output_image=args.path_output_image,
         getImage=imageServer.getImage,
     )
@@ -184,9 +187,9 @@ def main(args):
 def argparse():
     from argparse import ArgumentParser
     parser = ArgumentParser()
-    parser.add_argument('--path_AE_param', type=str,
+    parser.add_argument('--model_AE', type=str,
         default='./model_param/SpatialAE_param.pt')
-    parser.add_argument('--path_Transformer_param', type=str,
+    parser.add_argument('--model', type=str,
         default='./model_param/Transformer_param.pt')
     parser.add_argument('--path_output_image', type=str,
         default='./results/images/')

@@ -1,0 +1,12 @@
+autopep8
+numpy
+matplotlib
+seaborn
+pandas
+scikit-learn
+scikit-video
+# torch
+# torchvision
+wandb
+opencv-python
+open3d
