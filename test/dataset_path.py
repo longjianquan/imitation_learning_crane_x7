@@ -1,2 +1,2 @@
 # datafolder = '../../datasets/pingpong/'
-datafolder = '../../datasets/sponge_ball/'
+datafolder = '../../datasets/sponge_ball2/'

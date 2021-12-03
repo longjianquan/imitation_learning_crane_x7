@@ -1,13 +1,10 @@
 import torch
 from torch.utils.data import Dataset
-from torchvision import transforms
 import glob
 from tqdm import tqdm
 import numpy as np
 import pandas as pd
 import os
-from concurrent import futures
-from PIL import Image
 import re
 
 
@@ -21,14 +18,10 @@ class MotionDataset(Dataset):
         max_length: int = 1000,
         normalization: bool = True,
         split_seq: bool = False,
-        # image_size: int = 64,
-        # image_encoder: torch.nn.Module = None,
     ):
         self.train = train
-        # self.image_size = image_size
-        # self.image_encoder = image_encoder
 
-        state_list, image_list = [], []
+        state_list = []
         image_idx_list = []
 
         folders = glob.glob('{}/*'.format(datafolder))
@@ -36,7 +29,6 @@ class MotionDataset(Dataset):
         # temporary
         folders = folders[:1]
 
-        image_idx = 0
         for folder in folders:
             paths = glob.glob('{}/motion/*.csv'.format(folder))
             filenames = [os.path.splitext(os.path.basename(path))[0]
@@ -55,17 +47,6 @@ class MotionDataset(Dataset):
 
             print('loading {} data from {}'.format(len(filenum), folder))
             for filenum in tqdm(filenum):
-                # image paths
-                # image_folder_path = os.path.join(
-                #     folder, 'color', f'data{filenum}')
-                # image_paths = glob.glob(os.path.join(
-                #     image_folder_path, '*.png'))
-
-                # image_names = [os.path.splitext(os.path.basename(path))[0]
-                #     for path in image_paths]
-                # image_nums = sorted([float(re.sub(r'\D.\D', '', name))
-                #     for name in image_names])
-
                 # load state
                 motion_path = os.path.join(
                     folder, 'motion', f'slave{filenum}.csv')
@@ -80,61 +61,39 @@ class MotionDataset(Dataset):
                 col_names += [f'm_presentvelocity[{i}]' for i in range(8)]
                 col_names += [f'm_tau_res[{i}]' for i in range(8)]
 
-                # fit time
-                # start = max(df.index[0], image_nums[0])
-                # end = min(df.index[-1], image_nums[-1])
+                # data shaping
                 df = df.loc[:, col_names]
+                df = df[df.index > 0]
                 state = torch.tensor(np.array(df))
 
-                # # missing image complement
-                # i = 0
-                # time = [num for num in image_nums if start <= num <= end]
-                # while i < len(time) - 1:
-                #     diff = round((time[i + 1] - time[i]) * 1000)
-                #     if diff > 40:
-                #         num = -(-diff//40)
-                #         for j in range(num-1):
-                #             time.insert(i, time[i])
-                #         i += num
-                #     elif diff < 40:
-                #         time.pop(i+1)
-                #     else:
-                #         i += 1
-
-                # # load image
-                # image_paths = [
-                #     os.path.join(image_folder_path, '{:.3f}.png'.format(t))
-                #         for t in time
-                # ]
-                # image = self._load_images(image_paths)
-
-                # skip_num = -(-len(state) // len(image))
-                skip_num = 40
-                l = max_length + 1 + start_step
-                if len(state) > max_length and split_seq:
-                    # split sequence
-                    # image = self._split_list(image, l)
-                    state = self._split_list(state, l * skip_num)
-                else:
-                    # padding
-                    # image = [self._padding(image, l)]
-                    state = [self._padding(state, l * skip_num)]
-                # image_list.extend(image)
+                skip_num = 20
+                # l = max_length + 1 + start_step
+                # if len(state) > max_length and split_seq:
+                #     # split sequence
+                #     state = self._split_list(state, l * skip_num)
+                # else:
+                #     # padding
+                #     state = [self._padding(state, l * skip_num)]
+                # print(state.shape)
 
                 # decimation
-                for state_part in state:
-                    for start in range(skip_num):
-                        # image_idx_list.append(image_idx)
-                        state_list.append(state_part[start::skip_num])
-                    # image_idx += 1
+                # for state_part in state:
+                for start in range(skip_num):
+                    state_list.append(state[start::skip_num])
+                        # print(len(state_part[start::skip_num]))
 
-        state = torch.stack(state_list)
-        # self.image = torch.stack(image_list).squeeze()
+        # padding
+        length = [len(data_part) for data_part in state_list]
+        # print(length)
+        self.max_length = int(np.mean(length) + 2 * np.std(length))
+        state = torch.stack([self._padding(data_part, self.max_length)
+            for data_part in state_list])
+
+        # state = torch.stack(state_list)
         self.image_idx = torch.tensor(image_idx_list)
 
         # skip head data
         state = state[:, start_step:]
-        # self.image = self.image[:, start_step:]
 
         self.state_s = state[:, :, :24]
         self.state_m = state[:, :, 24:]
@@ -154,11 +113,8 @@ class MotionDataset(Dataset):
             self.state_s = state_s.reshape(batch_size, steps, -1)
 
         print('state shape:', state.shape)
-        # print('image shape:', self.image.shape)
         print('state data size: {} [MiB]'.format(
             state.detach().numpy().copy().__sizeof__()/1.049e+6))
-        # print('image data size: {} [MiB]'.format(
-        #     self.image.detach().numpy().copy().__sizeof__()/1.049e+6))
 
     def __len__(self):
         return len(self.state_s)
@@ -166,35 +122,24 @@ class MotionDataset(Dataset):
     def __getitem__(self, idx):
         state_s = self.state_s[idx]
         state_m = self.state_m[idx]
-        # image = self.image[self.image_idx[idx]]
 
         # for pytorch dataloader
         if type(idx) == int:
-            # state_s = state_s.unsqueeze(0)
-            # state_m = state_m.unsqueeze(0)
-            # image = image.unsqueeze(0)
             x_state = state_s[:-1].clone()
-            # x_image = image[:-1].clone()
             y_state = state_m[1:]
-            # y_image = image[1:]
         else:
             x_state = state_s[:, :-1].clone()
-            # x_image = image[:, :-1].clone()
             y_state = state_m[:, 1:]
-            # y_image = image[:, 1:]
 
         # add noise to input data
         if self.train:
             x_state += 0.1 * torch.randn_like(x_state)
-            # x_image += 0.1 * torch.randn_like(x_image)
 
         x = {
             'state': x_state,
-            # 'image': x_image,
         }
         y = {
             'state': y_state,
-            # 'image': y_image,
         }
         return x, y
 
@@ -211,36 +156,6 @@ class MotionDataset(Dataset):
 
     def _split_list(self, list, l):
         return [list[l * idx: l * (idx + 1)] for idx in range(len(list)//l)]
-
-    # def _load_images(self, image_paths):
-    #     transform = transforms.Compose([
-    #         transforms.ToTensor(),
-    #         transforms.Resize(self.image_size),
-    #         transforms.CenterCrop(self.image_size),
-    #     ])
-
-    #     def load_one_frame(idx):
-    #         if not os.path.exists(image_paths[idx]):
-    #             return
-    #         image = Image.open(image_paths[idx])
-    #         image = transform(image)
-    #         if self.image_encoder != None:
-    #             with torch.no_grad():
-    #                 image = self.image_encoder(image.unsqueeze(0))
-    #         return idx, image
-
-    #     image_list = []
-    #     length = len(image_paths)
-    #     image_list = [0] * length
-    #     with futures.ThreadPoolExecutor(max_workers=8) as executor:
-    #         future_images = [
-    #             executor.submit(
-    #                 load_one_frame,
-    #                 idx) for idx in range(length)]
-    #         for future in futures.as_completed(future_images):
-    #             idx, image = future.result()
-    #             image_list[idx] = image
-    #     return torch.stack(image_list)
 
     def _normalization(self, x):
         return (x - self.mean) / self.std

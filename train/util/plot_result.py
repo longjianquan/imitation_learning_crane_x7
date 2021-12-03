@@ -1,9 +1,10 @@
+from re import T
 from typing import List
 import numpy as np
 from PIL import Image
 import matplotlib as mpl
 mpl.use('Agg')
-# import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 import seaborn as sns
 sns.set()
 from sklearn.decomposition import PCA
@@ -14,21 +15,50 @@ def torch2numpy(tensor):
     return tensor.cpu().detach().numpy().copy()
 
 
-def plot_state(fig, state_ans, state_hat, col=2):
+def rad2deg(rad):
+    return rad * 180 / np.pi
+
+
+def plot_state(state_ans, state_hat, DoF=8):
+    fig, ax = plt.subplots(
+        DoF, 3,
+        figsize=(20, 20),
+        sharex=True,
+        sharey='col',
+    )
+
     state_ans = state_ans.transpose()
     state_hat = state_hat.transpose()
-    dim = len(state_ans)
-    row = -(-dim // col)
-    for i, (t, y) in enumerate(zip(state_ans, state_hat)):
-        ax = fig.add_subplot(row, col, i + 1)
-        ax.plot(t, color='tab:gray', label='Demo Data')
-        ax.plot(y, color='tab:blue', alpha=0.5, label='Model Output')
-        if i >= dim - col:
-            ax.set_xlabel('time step')
-        else:
-            ax.tick_params(bottom=False, labelbottom=False)
-        if i == 0:
-            ax.legend(loc='upper right')
+
+    theta_ans = state_ans[:DoF]
+    omega_ans = state_ans[DoF:2*DoF]
+    tau_ans = state_ans[2*DoF:3*DoF]
+    theta_hat = state_hat[:DoF]
+    omega_hat = state_hat[DoF:2*DoF]
+    tau_hat = state_hat[2*DoF:3*DoF]
+
+    for i in range(DoF):
+        ax[i, 0].plot(rad2deg(theta_ans[i]), color='tab:gray', label='teather')
+        ax[i, 0].plot(rad2deg(theta_hat[i]), color='tab:blue', label='predict')
+        ax[i, 0].set_ylabel(r'$\theta_' + str(i) + '$ [deg]')
+        ax[i, 0].set_ylim([-10, 370])
+        ax[i, 0].set_yticks(range(0, 370, 90))
+
+        ax[i, 1].plot(rad2deg(omega_ans[i]), color='tab:gray', label='teather')
+        ax[i, 1].plot(rad2deg(omega_hat[i]), color='tab:blue', label='predict')
+        ax[i, 1].set_ylabel(r'$\.{\theta}_' + str(i) + '$ [deg/s]')
+
+        ax[i, 2].plot(tau_ans[i], color='tab:gray', label='teather')
+        ax[i, 2].plot(tau_hat[i], color='tab:blue', label='predict')
+        ax[i, 2].set_ylabel(r'$\tau_' + str(i) + '$ [Nm]')
+
+    for i in range(3):
+        ax[DoF-1, i].set_xlabel('time step')
+    ax[DoF-1, 0].legend(loc='lower left')
+    fig.align_labels()
+    fig.tight_layout(rect=[0,0,1,0.96])
+
+    return fig
 
 
 def formatImages(image):

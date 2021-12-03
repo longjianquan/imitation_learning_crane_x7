@@ -33,7 +33,6 @@ class TransformerTrainer(Tranier):
     ):
         self.out_dir = out_dir
         self.loss_fn = nn.MSELoss()
-        self.fig_state = plt.figure(figsize=(20, 20))
 
         # image_encoder = SpatialAE(
         #     feature_point_num=16,
@@ -120,21 +119,21 @@ class TransformerTrainer(Tranier):
 
     def plot_result(self, epoch: int):
         if epoch % 10 == 0:
-            self.fig_state.clf()
             state_ans = self.y[0].cpu()
             pred = self.pred[0].cpu()
             state_ans = state_ans.cpu().detach().numpy().copy()
             pred = pred.cpu().detach().numpy().copy()
-            plot_state(self.fig_state, state_ans, pred, col=3)
-            self.fig_state.suptitle('{} epoch'.format(epoch))
+            fig_state = plot_state(state_ans, pred)
+            # fig_state.suptitle('{} epoch'.format(epoch))
+            fig_state.suptitle('{} epoch'.format(epoch))
             path_state_png = os.path.join(self.out_dir, 'state.png')
-            self.fig_state.savefig(path_state_png)
+            fig_state.savefig(path_state_png)
 
             # upload to wandb
             if self.wandb_flag:
                 wandb.log({
                     'epoch': epoch,
-                    'state': wandb.Image(self.fig_state),
+                    'state': wandb.Image(fig_state),
                 })
                 wandb.save(path_state_png)
 
