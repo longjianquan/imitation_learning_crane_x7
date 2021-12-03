@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 from torchvision import transforms
-import cv2
+# import cv2
 from PIL import Image
 import os
 from collections import deque
@@ -89,11 +89,9 @@ class TransformerServer(SocketServer):
         print('msg', msg)
         data = np.fromstring(msg, dtype=np.float32 , sep=' ')
         state = data[:self.input_dim]
-        image = self.getImage()
 
         # format
         state = torch.from_numpy(state.astype(np.float32)).to(self.device)
-        image = image.to(self.device)
 
         state = state.unsqueeze(0).unsqueeze(0)
         if self.memory is None:
@@ -104,10 +102,13 @@ class TransformerServer(SocketServer):
         memory = torch.cat(list(self.memory), dim=1)
 
         print('state shape:', state.shape)
-        print('image shape:', image.shape)
         print('memory shape:', memory.shape)
 
-        image = image.unsqueeze(0)
+        if self.getImage is not None:
+            image = self.getImage()
+            image = image.to(self.device)
+            image = image.unsqueeze(0)
+            print('image shape:', image.shape)
         # image_feature = self.image_encoder(image)
         # state = torch.cat([state, image_feature.unsqueeze(0)], dim=2)
 
@@ -121,12 +122,13 @@ class TransformerServer(SocketServer):
         state_hat = state_hat.cpu().detach().numpy().flatten()
         print('state_hat:', state_hat)
 
-        image = image.squeeze().cpu().detach().numpy()
-        image = image.transpose(1, 2, 0)
-        frame = image
-        frame = Image.fromarray((255 * frame).astype(np.uint8), mode=None)
-        frame.save(os.path.join(
-            self.path_output_image, f'pred{data[-1]:.3f}.jpg'))
+        if self.getImage is not None:
+            image = image.squeeze().cpu().detach().numpy()
+            image = image.transpose(1, 2, 0)
+            frame = image
+            frame = Image.fromarray((255 * frame).astype(np.uint8), mode=None)
+            frame.save(os.path.join(
+                self.path_output_image, f'pred{data[-1]:.3f}.jpg'))
 
         # temporary
         state_hat = np.delete(state_hat, [2, 10, 18])
@@ -171,14 +173,14 @@ def main(args):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print('device:', device)
 
-    imageServer = ImageServer(image_size=128)
+    # imageServer = ImageServer(image_size=128)
 
     server = TransformerServer(
         device=device,
         path_AE_param=args.model_AE,
         path_Transformer_param=args.model,
         path_output_image=args.path_output_image,
-        getImage=imageServer.getImage,
+        # getImage=imageServer.getImage,
     )
     server.standby()
     # server.save_gif('result.gif')
