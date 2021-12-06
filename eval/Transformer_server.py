@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 from torchvision import transforms
-# import cv2
+import cv2
 from PIL import Image
 import os
 from collections import deque
@@ -11,7 +11,8 @@ import sys
 sys.path.append('.')
 from model.SpatialAE import SpatialAE
 from SocketServer import SocketServer
-from model.TransformerImitation import TransformerImitation
+# from model.TransformerImitation import TransformerImitation
+from model.CNNImitation import CNNImitation
 
 
 class ImageServer():
@@ -66,10 +67,16 @@ class TransformerServer(SocketServer):
         self.image_decoder = self.spatialAE.decoder
 
         # load Transformer
-        self.transformer = TransformerImitation(dim=input_dim)
+        # self.transformer = TransformerImitation(dim=input_dim)
+        # state_dict = self.load_model_param(path_Transformer_param)
+        # self.transformer.load_state_dict(state_dict)
+        # self.transformer = self.transformer.to(device)
+
+        # load CNN
+        self.cnn = CNNImitation(dim=input_dim)
         state_dict = self.load_model_param(path_Transformer_param)
-        self.transformer.load_state_dict(state_dict)
-        self.transformer = self.transformer.to(device)
+        self.cnn.load_state_dict(state_dict)
+        self.cnn = self.cnn.to(device)
 
         # self.memory = [torch.zeros((1, 1, input_dim)).to(device)] * memory_size
         # self.memory = deque(self.memory, maxlen=memory_size)
@@ -113,7 +120,8 @@ class TransformerServer(SocketServer):
         # state = torch.cat([state, image_feature.unsqueeze(0)], dim=2)
 
         # prediction
-        state_hat = self.transformer(memory)[:, -1]
+        # state_hat = self.transformer(memory)[:, -1]
+        state_hat = self.cnn(memory)[:, -1]
 
         # image_hat = self.image_decoder(
         #     image_feature, image_size=image.shape[-1])
@@ -181,6 +189,7 @@ def main(args):
         path_Transformer_param=args.model,
         path_output_image=args.path_output_image,
         # getImage=imageServer.getImage,
+        memory_size=100,
     )
     server.standby()
     # server.save_gif('result.gif')
