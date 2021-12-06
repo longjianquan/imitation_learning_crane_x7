@@ -1,4 +1,3 @@
-# import torch
 from torch import nn
 from torch.functional import Tensor
 
@@ -10,39 +9,42 @@ class Conv4Imitation(nn.Module):
         out_channels,
         kernel_size: int = 3,
         stride: int = 1,
-        # padding: int = 2,
         dropout: float = 0.0,
+        dilation: int = 1,
     ):
         super().__init__()
 
-        # self.n_padding = padding
-
-        self.layer = nn.Sequential(
+        self.dilated_convolution = nn.Sequential(
+            nn.ReplicationPad1d((dilation * (kernel_size - 1), 0)),
             nn.Conv1d(
                 in_channels,
                 out_channels,
-                kernel_size,
-                stride,
-                padding = kernel_size // 2,
-                dilation=1,
+                kernel_size=kernel_size,
+                stride=stride,
+                dilation=dilation,
             ),
             nn.Dropout(dropout),
             nn.ReLU(),
         )
 
-    # def padding(self, x: Tensor):
-    #     replicate = torch.stack([x[:, :, 0]] * self.n_padding)
-    #     replicate = replicate.permute(1, 2, 0)
-    #     y = torch.cat([replicate, x], dim=2)
-    #     return y
+        self.point_wise_convolution = nn.Sequential(
+            nn.Conv1d(
+                out_channels,
+                out_channels,
+                kernel_size=1,
+                stride=stride,
+            ),
+            nn.Dropout(dropout),
+            nn.ReLU(),
+        )
 
     def forward(self, x: Tensor):
         """
         Args:
             x: Tensor, shape [batch_size, embedding_dim, seq_len]
         """
-        # x = self.padding(x)
-        y = self.layer(x)
+        x = self.dilated_convolution(x)
+        y = self.point_wise_convolution(x)
         return y
 
 
@@ -51,11 +53,11 @@ class CNNImitation(nn.Module):
         self,
         dim: int,
         kernel_size: int = 5,
-        dropout: float = 0.1,
+        dropout: float = 0.0,
     ):
         super().__init__()
 
-        channels = [dim, 16, 32, 16, dim]
+        channels = [dim, 16, 32, 64, 32, 16, dim]
         conv_list = []
         for i in range(len(channels)-1):
             conv_list.append(
@@ -64,6 +66,7 @@ class CNNImitation(nn.Module):
                     channels[i+1],
                     kernel_size=kernel_size,
                     dropout=dropout,
+                    dilation=2**i,
                 ))
         self.conv = nn.Sequential(*conv_list)
         self.linear = nn.Linear(dim, dim)
