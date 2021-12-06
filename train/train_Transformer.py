@@ -30,7 +30,7 @@ class BCTrainer(Tranier):
         image_size: int,
         learning_rate: float,
         wandb_flag: bool,
-        gpu_num: list = [0],
+        gpu: list = [0],
     ):
         self.out_dir = out_dir
         self.loss_fn = nn.MSELoss()
@@ -88,7 +88,7 @@ class BCTrainer(Tranier):
             optimizer=optimizer,
             out_dir=out_dir,
             wandb_flag=wandb_flag,
-            gpu_num=gpu_num,
+            gpu=gpu,
         )
 
         if wandb_flag:
@@ -119,7 +119,7 @@ class BCTrainer(Tranier):
         return loss
 
     def plot_result(self, epoch: int):
-        if epoch % 10 == 0:
+        if epoch % 100 == 0:
             state_ans = self.y[0].cpu()
             pred = self.pred[0].cpu()
             state_ans = state_ans.cpu().detach().numpy().copy()
@@ -151,7 +151,7 @@ def main(args):
         learning_rate=args.learning_rate,
         image_size=args.image_size,
         wandb_flag=args.wandb,
-        gpu_num=args.gpu_num,
+        gpu=args.gpu,
     ).train(args.epoch)
 
 
@@ -166,7 +166,7 @@ def argparse():
     parser.add_argument('--image_size', type=int, default=64)
     parser.add_argument('--wandb', action='store_true')
     tp = lambda x:list(map(int, x.split(',')))
-    parser.add_argument('--gpu_num', type=tp, default='0')
+    parser.add_argument('--gpu', type=tp, default='0')
     args = parser.parse_args()
     return args
 

@@ -21,7 +21,7 @@ class Tranier():
         optimizer: torch.optim.Optimizer,
         out_dir: str,
         wandb_flag: bool = False,
-        gpu_num: list = [0],
+        gpu: list = [0],
     ):
         self.model = model
         self.train_loader = train_loader
@@ -38,12 +38,12 @@ class Tranier():
         self.best_test = 1e10
 
         # device setting
-        self.device = torch.device(f'cuda:{gpu_num[0]}'
+        self.device = torch.device(f'cuda:{gpu[0]}'
             if torch.cuda.is_available() else 'cpu')
         print('device:', self.device)
-        if torch.cuda.device_count() > 1 and len(gpu_num) > 1:
+        if torch.cuda.device_count() > 1 and len(gpu) > 1:
             print('Let\'s use', torch.cuda.device_count(), 'GPUs!')
-            model = torch.nn.DataParallel(model, device_ids=gpu_num)
+            model = torch.nn.DataParallel(model, device_ids=gpu)
         model.to(self.device)
 
         # acceleration
