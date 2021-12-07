@@ -42,30 +42,26 @@ class BCTrainer(Tranier):
         # )
         # image_encoder.load_state_dict(torch.load(
         #     './model_param/SpatialAE_param.pt'))
-        # self.device = torch.device(f'cuda:{gpu_num[0]}'
-        #     if torch.cuda.is_available() else 'cpu')
+        self.device = torch.device(f'cuda:{gpu[0]}'
+            if torch.cuda.is_available() else 'cpu')
         # image_encoder.to(self.device)
 
-        train_dataset = MotionDataset(
-            data_path,
-            train=True,
-            # image_size=image_size,
-            # image_encoder=image_encoder.encoder,
-            normalization=False,
-        )
-        valid_dataset = MotionDataset(
-            data_path,
-            train=False,
-            # image_size=image_size,
-            # image_encoder=image_encoder.encoder,
-            normalization=False,
-        )
-        # train_dataset = SinWaveDataset(
-        #     data_num=1000,
+        # train_dataset = MotionDataset(
+        #     data_path,
+        #     train=True,
+        #     # image_size=image_size,
+        #     # image_encoder=image_encoder.encoder,
+        #     normalization=False,
         # )
-        # valid_dataset = SinWaveDataset(
-        #     data_num=100,
+        # valid_dataset = MotionDataset(
+        #     data_path,
+        #     train=False,
+        #     # image_size=image_size,
+        #     # image_encoder=image_encoder.encoder,
+        #     normalization=False,
         # )
+        train_dataset = SinWaveDataset(data_num=1000)
+        valid_dataset = SinWaveDataset(data_num=100)
 
         train_loader = FastDataLoader(
             train_dataset,
@@ -82,7 +78,10 @@ class BCTrainer(Tranier):
         print('train data num:', len(train_dataset))
         print('valid data num:', len(valid_dataset))
 
-        model = TransformerImitation(dim=train_dataset.state_m.shape[-1])
+        model = TransformerImitation(
+            dim=train_dataset.state_m.shape[-1],
+            device=self.device,
+        )
         # model = CNNImitation(dim=train_dataset.state_m.shape[-1])
 
         optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)

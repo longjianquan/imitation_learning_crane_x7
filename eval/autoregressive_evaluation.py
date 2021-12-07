@@ -1,9 +1,10 @@
 import argparse
+from collections import deque
 import numpy as np
 import torch
+
 import matplotlib.pyplot as plt
 import seaborn as sns
-from torch._C import device
 sns.set()
 
 import sys
@@ -75,10 +76,12 @@ def main(args: argparse):
     x_list = []
     length = args.length
     x = torch.zeros(size=(1, 1, dim)).to(device)
+    memory_length = 1000
+    memory = deque([x] * memory_length, maxlen=memory_length)
     for _ in range(length):
-        x = policy(x)
-        x_list.append(x)
-    x = torch.cat(x_list, dim=1)
+        x = torch.cat(list(memory), dim=1)
+        pred = policy(x)[:, -1]
+        memory.append(pred.unsqueeze(1))
     fig = plot_state(x.detach().cpu().numpy())
     fig.savefig('./results/autoregressive_evaluation.png')
 
@@ -88,7 +91,7 @@ if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('--model', type=str,
         default='./model_param/Transformer_param.pt')
-    parser.add_argument('--length', type=int, default=1000)
+    parser.add_argument('--length', type=int, default=500)
     args = parser.parse_args()
 
     main(args)

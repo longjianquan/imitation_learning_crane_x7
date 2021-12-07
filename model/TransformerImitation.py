@@ -1,3 +1,4 @@
+from re import S
 import torch
 from torch import nn
 import torch.nn.functional as F
@@ -29,7 +30,7 @@ class PositionalEncoding(nn.Module):
 
 
 class TransformerImitation(nn.Module):
-    def __init__(self, dim: int):
+    def __init__(self, dim: int, device: str = 'cuda'):
         super().__init__()
 
         self.pos_encoder = PositionalEncoding(d_model=dim)
@@ -48,12 +49,21 @@ class TransformerImitation(nn.Module):
         )
         self.linear = nn.Linear(dim, dim)
 
-    def forward(self, x: Tensor, mask: Tensor = None) -> Tensor:
+        self.device = device
+        self = self.to(device)
+
+    def _generate_square_subsequent_mask(self, sz):
+        mask = (torch.triu(torch.ones(sz, sz)) == 1).transpose(0, 1)
+        mask = mask.float().masked_fill(mask == 0, float('-inf'))
+        mask = mask.float().masked_fill(mask == 1, float(0.0))
+        return mask.to(self.device)
+
+    def forward(self, x: Tensor) -> Tensor:
         """
         Args:
             x: Tensor, shape [batch_size, seq_len, embedding_dim]
-            mask: Tensor, shape [batch_size, seq_len]
         """
+        mask = self._generate_square_subsequent_mask(x.shape[1])
         x = self.pos_encoder(x)
         x = x.permute(1, 0, 2) # (time, batch, dim)
         y = self.transformer_encoder(x, mask=mask)
