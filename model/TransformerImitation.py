@@ -66,10 +66,9 @@ class TransformerImitation(nn.Module):
         Args:
             x: Tensor, shape [batch_size, seq_len, embedding_dim]
         """
-        if self.mask is None:
+        if self.mask is None or self.mask.shape[0] != x.shape[1]:
             self.mask = self._generate_square_subsequent_mask(x.shape[1])
             self.mask = self.mask.to(x.device)
-            print(self.mask)
         x = self.pos_encoder(x)
         x = x.permute(1, 0, 2) # (time, batch, dim)
         y = self.transformer_encoder(x, mask=self.mask)

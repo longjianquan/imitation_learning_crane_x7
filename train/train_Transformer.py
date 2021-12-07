@@ -46,22 +46,22 @@ class BCTrainer(Tranier):
             if torch.cuda.is_available() else 'cpu')
         # image_encoder.to(self.device)
 
-        # train_dataset = MotionDataset(
-        #     data_path,
-        #     train=True,
-        #     # image_size=image_size,
-        #     # image_encoder=image_encoder.encoder,
-        #     normalization=False,
-        # )
-        # valid_dataset = MotionDataset(
-        #     data_path,
-        #     train=False,
-        #     # image_size=image_size,
-        #     # image_encoder=image_encoder.encoder,
-        #     normalization=False,
-        # )
-        train_dataset = SinWaveDataset(data_num=1000)
-        valid_dataset = SinWaveDataset(data_num=100)
+        train_dataset = MotionDataset(
+            data_path,
+            train=True,
+            # image_size=image_size,
+            # image_encoder=image_encoder.encoder,
+            normalization=False,
+        )
+        valid_dataset = MotionDataset(
+            data_path,
+            train=False,
+            # image_size=image_size,
+            # image_encoder=image_encoder.encoder,
+            normalization=False,
+        )
+        # train_dataset = SinWaveDataset(data_num=1000)
+        # valid_dataset = SinWaveDataset(data_num=100)
 
         train_loader = FastDataLoader(
             train_dataset,

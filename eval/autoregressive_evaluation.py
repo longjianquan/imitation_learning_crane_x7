@@ -48,8 +48,8 @@ def plot_state(
     for i in range(DoF):
         ax[i, 0].plot(theta[i])
         ax[i, 0].set_ylabel(r'$\theta_' + str(i) + '$ [deg]')
-        ax[i, 0].set_ylim([-10, 370])
-        ax[i, 0].set_yticks(range(0, 370, 90))
+        # ax[i, 0].set_ylim([-10, 370])
+        # ax[i, 0].set_yticks(range(0, 370, 90))
 
         ax[i, 1].plot(omega[i])
         ax[i, 1].set_ylabel(r'$\.{\theta}_' + str(i) + '$ [deg/s]')
@@ -60,7 +60,7 @@ def plot_state(
     for i in range(3):
         ax[DoF-1, i].set_xlabel('time step')
     fig.align_labels()
-    fig.tight_layout(rect=[0, 0, 1, 0.96])
+    fig.tight_layout(rect=[0, 0, 1, 1])
 
     return fig
 
@@ -75,15 +75,22 @@ def main(args: argparse):
     policy = policy.to(device)
 
     seq_length = args.length
-    # memory_length = 1000
-    memory_length = seq_length
+    memory_length = 1000
+    # memory_length = seq_length
     x = torch.zeros(size=(1, 1, dim)).to(device)
-    memory = deque([x] * memory_length, maxlen=memory_length)
+    # memory = deque([x] * memory_length, maxlen=memory_length)
+    memory = [x]
+    # result = []
     for _ in tqdm(range(seq_length)):
-        x = torch.cat(list(memory), dim=1)
-        pred = policy(x)[:, -1]
+        memory_tensor = torch.cat(memory[:memory_length], dim=1)
+        # print(memory_tensor.shape)
+        # print(memory_tensor)
+        # print(policy.mask)
+        pred = policy(memory_tensor)[:, -1]
         memory.append(pred.unsqueeze(1))
-    fig = plot_state(x.detach().cpu().numpy())
+    # result = torch.cat(result, dim=1)
+    memory_tensor = torch.cat(memory, dim=1)
+    fig = plot_state(memory_tensor.detach().cpu().numpy())
     fig.savefig('./results/autoregressive_evaluation.png')
 
 

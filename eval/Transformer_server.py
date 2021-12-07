@@ -11,7 +11,7 @@ import sys
 sys.path.append('.')
 from model.SpatialAE import SpatialAE
 from SocketServer import SocketServer
-# from model.TransformerImitation import TransformerImitation
+from model.TransformerImitation import TransformerImitation
 from model.CNNImitation import CNNImitation
 
 
@@ -67,20 +67,21 @@ class TransformerServer(SocketServer):
         self.image_decoder = self.spatialAE.decoder
 
         # load Transformer
-        # self.transformer = TransformerImitation(dim=input_dim)
-        # state_dict = self.load_model_param(path_Transformer_param)
-        # self.transformer.load_state_dict(state_dict)
-        # self.transformer = self.transformer.to(device)
+        self.policy = TransformerImitation(dim=input_dim)
+        state_dict = self.load_model_param(path_Transformer_param)
+        self.policy.load_state_dict(state_dict)
+        self.policy = self.policy.to(device)
 
         # load CNN
-        self.cnn = CNNImitation(dim=input_dim)
-        state_dict = self.load_model_param(path_Transformer_param)
-        self.cnn.load_state_dict(state_dict)
-        self.cnn = self.cnn.to(device)
+        # self.cnn = CNNImitation(dim=input_dim)
+        # state_dict = self.load_model_param(path_Transformer_param)
+        # self.cnn.load_state_dict(state_dict)
+        # self.cnn = self.cnn.to(device)
 
         # self.memory = [torch.zeros((1, 1, input_dim)).to(device)] * memory_size
         # self.memory = deque(self.memory, maxlen=memory_size)
-        self.memory = None
+        # self.memory = None
+        self.memory = []
 
         self.path_output_image = path_output_image
         os.makedirs(path_output_image, exist_ok=True)
@@ -101,12 +102,14 @@ class TransformerServer(SocketServer):
         state = torch.from_numpy(state.astype(np.float32)).to(self.device)
 
         state = state.unsqueeze(0).unsqueeze(0)
-        if self.memory is None:
-            self.memory = [state] * self.memory_size
-            self.memory = deque(self.memory, maxlen=self.memory_size)
-        else:
-            self.memory.append(state)
-        memory = torch.cat(list(self.memory), dim=1)
+        # if self.memory is None:
+        #     self.memory = [state] * self.memory_size
+        #     self.memory = deque(self.memory, maxlen=self.memory_size)
+        # else:
+        #     self.memory.append(state)
+        # memory = torch.cat(list(self.memory), dim=1)
+        self.memory.append(state)
+        memory = torch.cat(self.memory[:self.memory_size], dim=1)
 
         print('state shape:', state.shape)
         print('memory shape:', memory.shape)
@@ -120,8 +123,7 @@ class TransformerServer(SocketServer):
         # state = torch.cat([state, image_feature.unsqueeze(0)], dim=2)
 
         # prediction
-        # state_hat = self.transformer(memory)[:, -1]
-        state_hat = self.cnn(memory)[:, -1]
+        state_hat = self.policy(memory)[:, -1]
 
         # image_hat = self.image_decoder(
         #     image_feature, image_size=image.shape[-1])
