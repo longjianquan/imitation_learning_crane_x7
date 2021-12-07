@@ -2,6 +2,7 @@ import argparse
 from collections import deque
 import numpy as np
 import torch
+from tqdm import tqdm
 
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -73,11 +74,12 @@ def main(args: argparse):
     policy.load_state_dict(state_dict)
     policy = policy.to(device)
 
-    length = args.length
+    seq_length = args.length
+    # memory_length = 1000
+    memory_length = seq_length
     x = torch.zeros(size=(1, 1, dim)).to(device)
-    memory_length = 1000
     memory = deque([x] * memory_length, maxlen=memory_length)
-    for _ in range(length):
+    for _ in tqdm(range(seq_length)):
         x = torch.cat(list(memory), dim=1)
         pred = policy(x)[:, -1]
         memory.append(pred.unsqueeze(1))

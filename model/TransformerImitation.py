@@ -55,9 +55,11 @@ class TransformerImitation(nn.Module):
         self.linear = nn.Linear(dim, dim)
         self.mask = None
 
-    def _generate_square_subsequent_mask(self, dim: int):
-        mask = torch.triu(torch.ones(dim, dim)).transpose(0, 1)
-        return mask
+    def _generate_square_subsequent_mask(self, sz: int) -> Tensor:
+        r"""Generate a square mask for the sequence. The masked positions are filled with float('-inf').
+            Unmasked positions are filled with float(0.0).
+        """
+        return torch.triu(torch.full((sz, sz), float('-inf')), diagonal=1)
 
     def forward(self, x: Tensor) -> Tensor:
         """
@@ -67,6 +69,7 @@ class TransformerImitation(nn.Module):
         if self.mask is None:
             self.mask = self._generate_square_subsequent_mask(x.shape[1])
             self.mask = self.mask.to(x.device)
+            print(self.mask)
         x = self.pos_encoder(x)
         x = x.permute(1, 0, 2) # (time, batch, dim)
         y = self.transformer_encoder(x, mask=self.mask)
