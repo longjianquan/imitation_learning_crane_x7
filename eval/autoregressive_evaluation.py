@@ -73,7 +73,6 @@ def main(args: argparse):
     policy.load_state_dict(state_dict)
     policy = policy.to(device)
 
-    x_list = []
     length = args.length
     x = torch.zeros(size=(1, 1, dim)).to(device)
     memory_length = 1000

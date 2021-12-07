@@ -8,8 +8,8 @@ class SinWaveDataset(Dataset):
         data_num: int = 100,
         length: int = 1000,
     ):
-        self.state_m = torch.Tensor([[i / 100 for i in range(0, length)]] * data_num)
-        self.state_m = torch.sin(self.state_m)
+        self.state_m = [[i / 100 for i in range(0, length)]] * data_num
+        self.state_m = torch.sin(torch.Tensor(self.state_m))
         self.state_m = self.state_m.repeat(24, 1, 1).permute(1, 2, 0)
         self.state_m += 0.1 * torch.randn_like(self.state_m)
 

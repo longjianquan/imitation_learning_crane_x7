@@ -78,10 +78,7 @@ class BCTrainer(Tranier):
         print('train data num:', len(train_dataset))
         print('valid data num:', len(valid_dataset))
 
-        model = TransformerImitation(
-            dim=train_dataset.state_m.shape[-1],
-            device=self.device,
-        )
+        model = TransformerImitation(dim=train_dataset.state_m.shape[-1])
         # model = CNNImitation(dim=train_dataset.state_m.shape[-1])
 
         optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
@@ -125,7 +122,7 @@ class BCTrainer(Tranier):
         return loss
 
     def plot_result(self, epoch: int):
-        if epoch % 100 == 0:
+        if epoch % 10 == 0:
             state_ans = self.y[0].cpu()
             pred = self.pred[0].cpu()
             state_ans = state_ans.cpu().detach().numpy().copy()

@@ -23,8 +23,8 @@ def plot_state(
     state_ans: np.ndarray,
     state_hat: np.ndarray,
     DoF: int = 8,
-    color1: str = 'tab:blue',
-    color2: str = 'tab:grey',
+    color1: str = 'tab:grey',
+    color2: str = 'tab:blue',
     label1: str = 'teacher',
     label2: str = 'predict',
 ):
