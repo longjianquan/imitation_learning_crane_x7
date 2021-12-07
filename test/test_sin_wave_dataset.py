@@ -1,20 +1,19 @@
 import unittest
+# from torch.utils.data import DataLoader
 from tqdm import tqdm
 import time
 
 import sys
 sys.path.append('.')
 sys.path.append('..')
+from dataset.sin_wave_dataset import SinWaveDataset
 from dataset.fast_dataloader import FastDataLoader
-from dataset.motion_dataset import MotionDataset
-from dataset_path import datafolder
 
 
 class TestDataset(unittest.TestCase):
     def test_dataset(self):
         print('\n========== test dataset ==========')
-        dataset = MotionDataset(
-            datafolder,
+        dataset = SinWaveDataset(
             data_num=50,
         )
         dataloader = FastDataLoader(
@@ -38,8 +37,9 @@ class TestDataset(unittest.TestCase):
                 # print(y['state'][0][0])
             end = time.time()
             print('elapsed time:', end - start)
-                # start = time.time()
-                # dataset.denormalization(x['state'])
+            # start = time.time()
+            # dataset.denormalization(x['state'])
+
 
 if __name__ == '__main__':
     unittest.main()

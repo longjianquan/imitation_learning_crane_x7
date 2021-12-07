@@ -19,7 +19,15 @@ def rad2deg(rad):
     return rad * 180 / np.pi
 
 
-def plot_state(state_ans, state_hat, DoF=8):
+def plot_state(
+    state_ans: np.ndarray,
+    state_hat: np.ndarray,
+    DoF: int = 8,
+    color1: str = 'tab:blue',
+    color2: str = 'tab:grey',
+    label1: str = 'teacher',
+    label2: str = 'predict',
+):
     fig, ax = plt.subplots(
         DoF, 3,
         figsize=(20, 20),
@@ -30,33 +38,33 @@ def plot_state(state_ans, state_hat, DoF=8):
     state_ans = state_ans.transpose()
     state_hat = state_hat.transpose()
 
-    theta_ans = state_ans[:DoF]
-    omega_ans = state_ans[DoF:2*DoF]
+    theta_ans = rad2deg(state_ans[:DoF])
+    omega_ans = rad2deg(state_ans[DoF:2*DoF])
     tau_ans = state_ans[2*DoF:3*DoF]
-    theta_hat = state_hat[:DoF]
-    omega_hat = state_hat[DoF:2*DoF]
+    theta_hat = rad2deg(state_hat[:DoF])
+    omega_hat = rad2deg(state_hat[DoF:2*DoF])
     tau_hat = state_hat[2*DoF:3*DoF]
 
     for i in range(DoF):
-        ax[i, 0].plot(rad2deg(theta_ans[i]), color='tab:gray', label='teacher')
-        ax[i, 0].plot(rad2deg(theta_hat[i]), color='tab:blue', label='predict')
+        ax[i, 0].plot(theta_ans[i], color=color1, label=label1, alpha=0.8)
+        ax[i, 0].plot(theta_hat[i], color=color2, label=label2, alpha=0.8)
         ax[i, 0].set_ylabel(r'$\theta_' + str(i) + '$ [deg]')
         ax[i, 0].set_ylim([-10, 370])
         ax[i, 0].set_yticks(range(0, 370, 90))
 
-        ax[i, 1].plot(rad2deg(omega_ans[i]), color='tab:gray', label='teacher')
-        ax[i, 1].plot(rad2deg(omega_hat[i]), color='tab:blue', label='predict')
+        ax[i, 1].plot(omega_ans[i], color=color1, label=label1, alpha=0.8)
+        ax[i, 1].plot(omega_hat[i], color=color2, label=label2, alpha=0.8)
         ax[i, 1].set_ylabel(r'$\.{\theta}_' + str(i) + '$ [deg/s]')
 
-        ax[i, 2].plot(tau_ans[i], color='tab:gray', label='teacher')
-        ax[i, 2].plot(tau_hat[i], color='tab:blue', label='predict')
+        ax[i, 2].plot(tau_ans[i], color=color1, label=label1, alpha=0.8)
+        ax[i, 2].plot(tau_hat[i], color=color2, label=label2, alpha=0.8)
         ax[i, 2].set_ylabel(r'$\tau_' + str(i) + '$ [Nm]')
 
     for i in range(3):
         ax[DoF-1, i].set_xlabel('time step')
     ax[DoF-1, 0].legend(loc='lower left')
     fig.align_labels()
-    fig.tight_layout(rect=[0,0,1,0.96])
+    fig.tight_layout(rect=[0, 0, 1, 0.96])
 
     return fig
 

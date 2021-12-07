@@ -36,7 +36,7 @@ class TransformerImitation(nn.Module):
         transformer_encoder_layer = nn.TransformerEncoderLayer(
             d_model=dim,
             # nhead=8,
-            nhead=4,
+            nhead=1,
             # dim_feedforward=2048,
             dim_feedforward=256,
             # batch_first=True,

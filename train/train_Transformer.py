@@ -12,13 +12,14 @@ sns.set()
 import sys
 sys.path.append('.')
 from train.trainer import Tranier
+from util.plot_result import *
+from model.CNNImitation import CNNImitation
+from model.TransformerImitation import TransformerImitation
+from dataset.fast_dataloader import FastDataLoader
+from dataset.motion_dataset import MotionDataset
+from dataset.sin_wave_dataset import SinWaveDataset
 # from model.SpatialAE import SpatialAE
 # from dataset.motion_image_dataset import MotionImageDataset
-from dataset.motion_dataset import MotionDataset
-from dataset.fast_dataloader import FastDataLoader
-from model.TransformerImitation import TransformerImitation
-from model.CNNImitation import CNNImitation
-from util.plot_result import *
 
 
 class BCTrainer(Tranier):
@@ -59,6 +60,12 @@ class BCTrainer(Tranier):
             # image_encoder=image_encoder.encoder,
             normalization=False,
         )
+        # train_dataset = SinWaveDataset(
+        #     data_num=1000,
+        # )
+        # valid_dataset = SinWaveDataset(
+        #     data_num=100,
+        # )
 
         train_loader = FastDataLoader(
             train_dataset,
@@ -75,8 +82,8 @@ class BCTrainer(Tranier):
         print('train data num:', len(train_dataset))
         print('valid data num:', len(valid_dataset))
 
-        # model = TransformerImitation(dim=train_dataset.state_m.shape[-1])
-        model = CNNImitation(dim=train_dataset.state_m.shape[-1])
+        model = TransformerImitation(dim=train_dataset.state_m.shape[-1])
+        # model = CNNImitation(dim=train_dataset.state_m.shape[-1])
 
         optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
@@ -165,7 +172,7 @@ def argparse():
     parser.add_argument('--learning_rate', type=float, default=0.001)
     parser.add_argument('--image_size', type=int, default=64)
     parser.add_argument('--wandb', action='store_true')
-    tp = lambda x:list(map(int, x.split(',')))
+    def tp(x): return list(map(int, x.split(',')))
     parser.add_argument('--gpu', type=tp, default='0')
     args = parser.parse_args()
     return args
