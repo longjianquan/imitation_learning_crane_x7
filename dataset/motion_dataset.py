@@ -15,9 +15,9 @@ class MotionDataset(Dataset):
         train: bool = True,
         split_ratio: float = 0.8,
         start_step: int = 50,
-        max_length: int = 1000,
-        normalization: bool = True,
-        split_seq: bool = False,
+        # max_length: int = 1000,
+        # normalization: bool = True,
+        # split_seq: bool = False,
     ):
         self.train = train
 
@@ -86,50 +86,51 @@ class MotionDataset(Dataset):
         length = [len(data_part) for data_part in state_list]
         # print(length)
         self.max_length = int(np.mean(length) + 2 * np.std(length))
-        state = torch.stack([self._padding(data_part, self.max_length)
+        self.state = torch.stack([self._padding(data_part, self.max_length)
             for data_part in state_list])
 
         # state = torch.stack(state_list)
         self.image_idx = torch.tensor(image_idx_list)
 
         # skip head data
-        state = state[:, start_step:]
+        self.state = self.state[:, start_step:]
 
-        self.state_s = state[:, :, :24]
-        self.state_m = state[:, :, 24:]
+        # self.state_s = state[:, :, :24]
+        # self.state_m = state[:, :, 24:]
 
-        # normalization
-        batch_size, steps, _ = self.state_m.shape
-        state_m = self.state_m.reshape(batch_size * steps, -1)
-        self.mean = torch.mean(state_m, axis=0, keepdims=True)
-        self.std = torch.std(state_m, axis=0, keepdims=True)
-        self.std = torch.max(self.std, torch.ones_like(self.std))
-        if normalization:
-            state_m = self._normalization(state_m)
-            self.state_m = state_m.reshape(batch_size, steps, -1)
+        # # normalization
+        # batch_size, steps, _ = self.state_m.shape
+        # state_m = self.state_m.reshape(batch_size * steps, -1)
+        # self.mean = torch.mean(state_m, axis=0, keepdims=True)
+        # self.std = torch.std(state_m, axis=0, keepdims=True)
+        # self.std = torch.max(self.std, torch.ones_like(self.std))
+        # if normalization:
+        #     state_m = self._normalization(state_m)
+        #     self.state_m = state_m.reshape(batch_size, steps, -1)
 
-            state_s = self.state_s.reshape(batch_size * steps, -1)
-            state_s = self._normalization(state_s)
-            self.state_s = state_s.reshape(batch_size, steps, -1)
+        #     state_s = self.state_s.reshape(batch_size * steps, -1)
+        #     state_s = self._normalization(state_s)
+        #     self.state_s = state_s.reshape(batch_size, steps, -1)
 
         print('state shape:', state.shape)
         print('state data size: {} [MiB]'.format(
             state.detach().numpy().copy().__sizeof__()/1.049e+6))
 
     def __len__(self):
-        return len(self.state_s)
+        return len(self.state)
 
     def __getitem__(self, idx):
-        state_s = self.state_s[idx]
-        state_m = self.state_m[idx]
+        # state_s = self.state_s[idx]
+        # state_m = self.state_m[idx]
+        state = self.state[idx]
 
         # for pytorch dataloader
         if type(idx) == int:
-            x_state = state_s[:-1].clone()
-            y_state = state_m[1:]
+            x_state = state[:-1]
+            y_state = state[1:]
         else:
-            x_state = state_s[:, :-1].clone()
-            y_state = state_m[:, 1:]
+            x_state = state[:, :-1]
+            y_state = state[:, 1:]
 
         # add noise to input data
         if self.train:

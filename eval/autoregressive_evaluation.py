@@ -11,6 +11,7 @@ sns.set()
 import sys
 sys.path.append('.')
 from model.TransformerImitation import TransformerImitation
+from model.CNNImitation import CNNImitation
 
 
 def load_model_param(path: str):
@@ -70,25 +71,20 @@ def main(args: argparse):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     policy = TransformerImitation(dim=dim)
+    # policy = CNNImitation(dim=dim)
     state_dict = load_model_param(args.model)
+    print(state_dict.keys())
     policy.load_state_dict(state_dict)
     policy = policy.to(device)
 
     seq_length = args.length
     memory_length = 1000
-    # memory_length = seq_length
     x = torch.zeros(size=(1, 1, dim)).to(device)
-    # memory = deque([x] * memory_length, maxlen=memory_length)
     memory = [x]
-    # result = []
     for _ in tqdm(range(seq_length)):
         memory_tensor = torch.cat(memory[:memory_length], dim=1)
-        # print(memory_tensor.shape)
-        # print(memory_tensor)
-        # print(policy.mask)
         pred = policy(memory_tensor)[:, -1]
         memory.append(pred.unsqueeze(1))
-    # result = torch.cat(result, dim=1)
     memory_tensor = torch.cat(memory, dim=1)
     fig = plot_state(memory_tensor.detach().cpu().numpy())
     fig.savefig('./results/autoregressive_evaluation.png')

@@ -51,14 +51,14 @@ class BCTrainer(Tranier):
             train=True,
             # image_size=image_size,
             # image_encoder=image_encoder.encoder,
-            normalization=False,
+            # normalization=False,
         )
         valid_dataset = MotionDataset(
             data_path,
             train=False,
             # image_size=image_size,
             # image_encoder=image_encoder.encoder,
-            normalization=False,
+            # normalization=False,
         )
         # train_dataset = SinWaveDataset(data_num=1000)
         # valid_dataset = SinWaveDataset(data_num=100)
@@ -78,7 +78,8 @@ class BCTrainer(Tranier):
         print('train data num:', len(train_dataset))
         print('valid data num:', len(valid_dataset))
 
-        model = TransformerImitation(dim=train_dataset.state_m.shape[-1])
+        self.dim = train_dataset.state.shape[-1]
+        model = TransformerImitation(dim=self.dim)
         # model = CNNImitation(dim=train_dataset.state_m.shape[-1])
 
         optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
@@ -121,24 +122,62 @@ class BCTrainer(Tranier):
 
         return loss
 
+    def generate(
+        self,
+        length: int = 500,
+        init_state: torch.Tensor = None,
+    ):
+        seq_length = length
+        memory_length = length
+        if init_state is None:
+            memory = [torch.zeros(size=(1, 1, self.dim)).to(self.device)]
+        else:
+            memory = [init_state.unsqueeze(0).unsqueeze(0)]
+        for _ in range(seq_length):
+            memory_tensor = torch.cat(memory[:memory_length], dim=1)
+            pred = self.model(memory_tensor)[:, -1]
+            memory.append(pred.unsqueeze(1))
+        memory_tensor = torch.cat(memory, dim=1)
+        return memory_tensor
+
     def plot_result(self, epoch: int):
         if epoch % 10 == 0:
-            state_ans = self.y[0].cpu()
-            pred = self.pred[0].cpu()
-            state_ans = state_ans.cpu().detach().numpy().copy()
-            pred = pred.cpu().detach().numpy().copy()
+            state_ans_tensor = self.y[0]
+            pred_tensor = self.pred[0]
+            state_ans = state_ans_tensor.cpu().detach().numpy().copy()
+            pred = pred_tensor.cpu().detach().numpy().copy()
+
             fig_state = plot_state(state_ans, pred)
             fig_state.suptitle('{} epoch'.format(epoch))
             path_state_png = os.path.join(self.out_dir, 'state.png')
             fig_state.savefig(path_state_png)
+
+            fig_state_slave = plot_state(state_ans[:, 24:], pred[:, 24:])
+            fig_state_slave.suptitle('{} epoch'.format(epoch))
+            path_state_slave_png = os.path.join(self.out_dir, 'state_slave.png')
+            fig_state_slave.savefig(path_state_slave_png)
+
+            generated = self.generate(
+                init_state=state_ans_tensor[0],
+                length=state_ans_tensor.shape[0],
+            )
+            generated = generated.cpu().detach().numpy().copy()
+            fig_generated = plot_state(state_ans, generated)
+            fig_generated.suptitle('{} epoch'.format(epoch))
+            path_generated = os.path.join(self.out_dir, 'state_generated.png')
+            fig_generated.savefig(path_generated)
 
             # upload to wandb
             if self.wandb_flag:
                 wandb.log({
                     'epoch': epoch,
                     'state': wandb.Image(fig_state),
+                    'state_slave': wandb.Image(fig_state_slave),
+                    'generated': wandb.Image(fig_generated),
                 })
                 wandb.save(path_state_png)
+                wandb.save(path_state_slave_png)
+                wandb.save(path_generated)
 
             plt.close()
 
