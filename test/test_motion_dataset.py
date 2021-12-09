@@ -28,10 +28,10 @@ class TestDataset(unittest.TestCase):
         for e in range(3):
             start = time.time()
             for i, (x, y) in enumerate(tqdm(dataloader)):
-                pass
+                # pass
                 # print('#', i)
-                # print('x state shape:', x['state'].shape)
-                # print('y state shape:', y['state'].shape)
+                print('x state shape:', x['state'].shape)
+                print('y state shape:', y['state'].shape)
                 # print('x image shape:', x['image'].shape)
                 # print('y image shape:', y['image'].shape)
                 # print(x['state'][0][0])

@@ -15,14 +15,14 @@ class MotionDataset(Dataset):
         train: bool = True,
         split_ratio: float = 0.8,
         start_step: int = 50,
-        # max_length: int = 1000,
+        max_length: int = None,
         # normalization: bool = True,
         # split_seq: bool = False,
     ):
         self.train = train
 
         state_list = []
-        image_idx_list = []
+        # image_idx_list = []
 
         folders = glob.glob('{}/*'.format(datafolder))
 
@@ -83,17 +83,19 @@ class MotionDataset(Dataset):
                         # print(len(state_part[start::skip_num]))
 
         # padding
-        length = [len(data_part) for data_part in state_list]
-        # print(length)
-        self.max_length = int(np.mean(length) + 2 * np.std(length))
+        if max_length is None:
+            length = [len(data_part) for data_part in state_list]
+            self.max_length = int(np.mean(length) + 2 * np.std(length))
+        else:
+            self.max_length = max_length
         self.state = torch.stack([self._padding(data_part, self.max_length)
             for data_part in state_list])
 
         # state = torch.stack(state_list)
-        self.image_idx = torch.tensor(image_idx_list)
+        # self.image_idx = torch.tensor(image_idx_list)
 
         # skip head data
-        self.state = self.state[:, start_step:]
+        # self.state = self.state[:, start_step:]
 
         # self.state_s = state[:, :, :24]
         # self.state_m = state[:, :, 24:]
@@ -112,9 +114,9 @@ class MotionDataset(Dataset):
         #     state_s = self._normalization(state_s)
         #     self.state_s = state_s.reshape(batch_size, steps, -1)
 
-        print('state shape:', state.shape)
+        print('state shape:', self.state.shape)
         print('state data size: {} [MiB]'.format(
-            state.detach().numpy().copy().__sizeof__()/1.049e+6))
+            self.state.detach().numpy().copy().__sizeof__()/1.049e+6))
 
     def __len__(self):
         return len(self.state)

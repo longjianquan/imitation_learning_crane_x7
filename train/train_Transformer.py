@@ -52,6 +52,7 @@ class BCTrainer(Tranier):
             # image_size=image_size,
             # image_encoder=image_encoder.encoder,
             # normalization=False,
+            # max_length=1000,
         )
         valid_dataset = MotionDataset(
             data_path,
@@ -59,6 +60,7 @@ class BCTrainer(Tranier):
             # image_size=image_size,
             # image_encoder=image_encoder.encoder,
             # normalization=False,
+            # max_length=1000,
         )
         # train_dataset = SinWaveDataset(data_num=1000)
         # valid_dataset = SinWaveDataset(data_num=100)
