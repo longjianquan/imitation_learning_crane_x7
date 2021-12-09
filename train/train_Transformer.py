@@ -135,7 +135,8 @@ class BCTrainer(Tranier):
             memory = [torch.zeros(size=(1, 1, self.dim)).to(self.device)]
         else:
             memory = [init_state.unsqueeze(0).unsqueeze(0)]
-        for _ in range(seq_length):
+        from tqdm import tqdm
+        for _ in tqdm(range(seq_length), 'generate'):
             memory_tensor = torch.cat(memory[:memory_length], dim=1)
             pred = self.model(memory_tensor)[:, -1]
             memory.append(pred.unsqueeze(1))
@@ -143,7 +144,7 @@ class BCTrainer(Tranier):
         return memory_tensor
 
     def plot_result(self, epoch: int):
-        if epoch % 10 == 0:
+        if epoch % 100 == 0 or (epoch % 10 == 0 and epoch <= 100):
             state_ans_tensor = self.y[0]
             pred_tensor = self.pred[0]
             state_ans = state_ans_tensor.cpu().detach().numpy().copy()

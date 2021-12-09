@@ -43,14 +43,14 @@ class TransformerImitation(nn.Module):
             d_model=dim,
             nhead=8,
             # nhead=1,
-            dim_feedforward=2048,
-            # dim_feedforward=256,
+            # dim_feedforward=2048,
+            dim_feedforward=1024,
             # batch_first=True,
         )
         self.transformer_encoder = nn.TransformerEncoder(
             encoder_layer=transformer_encoder_layer,
-            num_layers=2,
-            # num_layers=1,
+            # num_layers=2,
+            num_layers=1,
         )
         self.linear = nn.Linear(dim, dim)
         self.mask = None
