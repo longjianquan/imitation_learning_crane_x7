@@ -33,8 +33,11 @@ class BCTrainer(Tranier):
         wandb_flag: bool,
         gpu: list = [0],
     ):
+        self.n_autoregressive = 15
         self.out_dir = out_dir
         self.loss_fn = nn.MSELoss()
+        self.device = torch.device(f'cuda:{gpu[0]}'
+            if torch.cuda.is_available() else 'cpu')
 
         # image_encoder = SpatialAE(
         #     feature_point_num=16,
@@ -42,8 +45,6 @@ class BCTrainer(Tranier):
         # )
         # image_encoder.load_state_dict(torch.load(
         #     './model_param/SpatialAE_param.pt'))
-        self.device = torch.device(f'cuda:{gpu[0]}'
-            if torch.cuda.is_available() else 'cpu')
         # image_encoder.to(self.device)
 
         train_dataset = MotionDataset(
@@ -114,13 +115,24 @@ class BCTrainer(Tranier):
     ) -> torch.Tensor:
         x, y = batch
         x = x['state'].to(self.device)
-        y = y['state'].to(self.device)
+        # y = y['state'].to(self.device)
+        y = x
 
-        pred = self.model(x)
-        loss = self.loss_fn(y, pred)
+        # if self.autoregressive_count < self.autoregressive_length:
+        #     pred = self.model(self.x)
+        #     self.autoregressive_count += 1
+        # else:
+        #     pred = self.model(x)
+        #     self.autoregressive_count = 0
+
+        loss = 0
+        for i in range(1, self.n_autoregressive + 1):
+            x = self.model(x)
+            loss += self.loss_fn(x[:, :-i], y[:, i:])
+        loss /= self.n_autoregressive
 
         self.y = y
-        self.pred = pred
+        self.pred = x
 
         return loss
 
@@ -150,12 +162,12 @@ class BCTrainer(Tranier):
             state_ans = state_ans_tensor.cpu().detach().numpy().copy()
             pred = pred_tensor.cpu().detach().numpy().copy()
 
-            fig_state = plot_state(state_ans, pred)
+            fig_state = plot_state(state_ans[:, 24:], pred[:, 24:])
             fig_state.suptitle('{} epoch'.format(epoch))
             path_state_png = os.path.join(self.out_dir, 'state.png')
             fig_state.savefig(path_state_png)
 
-            fig_state_slave = plot_state(state_ans[:, 24:], pred[:, 24:])
+            fig_state_slave = plot_state(state_ans, pred)
             fig_state_slave.suptitle('{} epoch'.format(epoch))
             path_state_slave_png = os.path.join(self.out_dir, 'state_slave.png')
             fig_state_slave.savefig(path_state_slave_png)
