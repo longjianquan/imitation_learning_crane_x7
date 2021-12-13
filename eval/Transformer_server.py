@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 from torchvision import transforms
-import cv2
+# import cv2
 from PIL import Image
 import os
 from collections import deque
@@ -48,7 +48,7 @@ class TransformerServer(SocketServer):
         host: str = '127.0.0.1',
         port: int = 10051,
         device: torch.device = torch.device('cpu'),
-        input_dim: int = 24,
+        input_dim: int = 48,
         getImage: callable = None,
         memory_size: int = 1000,
     ):
@@ -96,20 +96,24 @@ class TransformerServer(SocketServer):
     def NN_callback(self, msg: str) -> str:
         print('msg', msg)
         data = np.fromstring(msg, dtype=np.float32 , sep=' ')
-        state = data[:self.input_dim]
+        # state = data[:self.input_dim]
+        state = data[:self.input_dim // 2]
 
         # format
         state = torch.from_numpy(state.astype(np.float32)).to(self.device)
-
+        state = state.repeat(2)
+        state[-8:-1] = -state[-8:-1]
         state = state.unsqueeze(0).unsqueeze(0)
+
         # if self.memory is None:
         #     self.memory = [state] * self.memory_size
         #     self.memory = deque(self.memory, maxlen=self.memory_size)
         # else:
         #     self.memory.append(state)
         # memory = torch.cat(list(self.memory), dim=1)
+
         self.memory.append(state)
-        memory = torch.cat(self.memory[:self.memory_size], dim=1)
+        memory = torch.cat(self.memory, dim=1)
 
         print('state shape:', state.shape)
         print('memory shape:', memory.shape)
@@ -119,6 +123,7 @@ class TransformerServer(SocketServer):
             image = image.to(self.device)
             image = image.unsqueeze(0)
             print('image shape:', image.shape)
+
         # image_feature = self.image_encoder(image)
         # state = torch.cat([state, image_feature.unsqueeze(0)], dim=2)
 
@@ -128,8 +133,9 @@ class TransformerServer(SocketServer):
         # image_hat = self.image_decoder(
         #     image_feature, image_size=image.shape[-1])
 
-        print('state_hat:', state_hat.shape)
         state_hat = state_hat.cpu().detach().numpy().flatten()
+        state_hat = state_hat[24:48]
+        print('state_hat:', state_hat.shape)
         print('state_hat:', state_hat)
 
         if self.getImage is not None:
@@ -147,11 +153,11 @@ class TransformerServer(SocketServer):
         # LPF
         if self.state_hat_old is None:
             self.state_hat_old = state_hat
-        state_hat = self.state_hat_old * 0.9 + state_hat * 0.1
+        state_hat = self.state_hat_old * 0.2 + state_hat * 0.8
         self.state_hat_old = state_hat
 
         # to string
-        msg = ','.join(state_hat.astype(np.str))
+        msg = ','.join(state_hat.astype(str))
         return msg
 
     def load_model_param(self, filepath):

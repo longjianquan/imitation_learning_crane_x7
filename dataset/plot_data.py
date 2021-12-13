@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 
 import sys
 sys.path.append('.')
@@ -19,9 +20,10 @@ def main(data_path: str):
     col_names_m += [f'm_presentvelocity[{i}]' for i in range(8)]
     col_names_m += [f'm_tau_res[{i}]' for i in range(8)]
     df = df[df.index > 4.0]
-    df = df[df.index < 20.0]
+    # df = df[df.index < 10.0 + 4.0]
+    df = df[::20]
     print(df.head())
-    # print(df.tail())
+    print(df.tail())
     df_s = df[col_names_s]
     df_m = df[col_names_m]
     data_s = np.array(df_s)
@@ -37,6 +39,7 @@ def main(data_path: str):
         label2='master',
     )
     fig.savefig('./results/plot_data.png')
+    # plt.show()
 
 
 if __name__ == '__main__':

@@ -442,7 +442,7 @@ void *slave_control(void *) {
           printf("-> %s\n", rbuf);
           sendf = true;
           tp = strtok(rbuf, ",");
-          printf("a\n");
+          // printf("a\n");
 
           if (tp == NULL) {
             cout << "break2だよ\n" << endl;
@@ -504,9 +504,9 @@ void *slave_control(void *) {
         }
       }
     }
-    printf("b\n");
+    // printf("b\n");
     // pthread_mutex_unlock(&mutex);
-    printf("c\n");
+    // printf("c\n");
 
     for (int i = 0; i < JOINT_NUM2; i++) {
       crslave.tau_p[i] =
