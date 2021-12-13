@@ -62,6 +62,7 @@ def plot_state(
         ax[DoF-1, i].set_xlabel('time step')
     fig.align_labels()
     fig.tight_layout(rect=[0, 0, 1, 1])
+    plt.xlim(0, 100)
 
     return fig
 
