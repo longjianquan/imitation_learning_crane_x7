@@ -50,8 +50,8 @@ class TransformerImitation(nn.Module):
         )
         self.transformer_encoder = nn.TransformerEncoder(
             encoder_layer=transformer_encoder_layer,
-            # num_layers=2,
-            num_layers=1,
+            num_layers=6,
+            # num_layers=1,
         )
         self.linear = nn.Linear(dim, dim)
         self.mask = None
