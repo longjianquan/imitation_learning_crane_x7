@@ -5,9 +5,9 @@ from PIL import Image
 import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
-import seaborn as sns
-sns.set()
-from sklearn.decomposition import PCA
+# import seaborn as sns
+# sns.set()
+# from sklearn.decomposition import PCA
 import torch
 
 
