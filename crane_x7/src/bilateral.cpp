@@ -120,10 +120,7 @@ void *slave_control(void *) {
   /**********************************************************
    *    モーションデータをテキストに保存（初期位置）         *
    ***********************************************************/
-  printf(
-      "===================================slave_p_controlstart============"
-      "====="
-      "===========\n");
+  printf("==========slave_p_controlstart==========\n");
   crslave.ffp = fopen(crslave.filename2.c_str(), "w");
   fprintf(crslave.ffp,
           "time,s_presentposition[0],s_presentposition[1],s_presentposition[2],"
@@ -147,7 +144,16 @@ void *slave_control(void *) {
   fprintf(crslave.ffp,
           "m_tau_res[0],m_tau_res[1],m_tau_res[2],m_tau_res[3],m_tau_res[4],m_"
           "tau_res[5],m_tau_res[6],m_tau_res[7],");
+  for(int i = 0; i < 8; i++)
+    fprintf(crslave.ffp, "s_tau_dis[%d],", i);
+  for(int i = 0; i < 8; i++)
+    fprintf(crslave.ffp, "s_dob0[%d],", i);
+  for(int i = 0; i < 8; i++)
+    fprintf(crslave.ffp, "s_dob1[%d],", i);
+  for(int i = 0; i < 8; i++)
+    fprintf(crslave.ffp, "s_dob2[%d],", i);
   fprintf(crslave.ffp, "sleeptime,controltime\n");
+
   crslave.Readpresent_position(ID);
   if ((crslave.present_position[0] == 0.0) ||
       (crslave.present_position[7] == 0.0)) {
@@ -171,45 +177,47 @@ void *slave_control(void *) {
   /*********************************************************
     初回実行時のみ，カメラ保存用ソケットを追加する
   **********************************************************/
-  if (camera_count == 0) {
-    printf("CONNECT SOCK \n");
-    // ソケットの作成
-    sock = socket(AF_INET, SOCK_STREAM, 0);
-    // 接続先指定用構造体の準備(python側の設定を書く。宛先の設定)
-    addr.sin_family = AF_INET;
-    // ポート番号
-    addr.sin_port = htons(10051);
-    // このIPは自分自身(PC)を示す
-    addr.sin_addr.s_addr = inet_addr("127.0.0.1");
-    // サーバに接続
-    connect_mode = connect(sock, (struct sockaddr *)&addr, sizeof(addr));
-    // ファイルディスクリプタ集合の中身をクリア
-    FD_ZERO(&fds);
-    // ファイルディスクリプタ集合を設定
-    FD_SET(sock, &fds);
-    printf("CONNECT SOCK DONE\n");
-    camera_count++;
-  }
+  // if (camera_count == 0) {
+  //   printf("CONNECT SOCK \n");
+  //   // ソケットの作成
+  //   sock = socket(AF_INET, SOCK_STREAM, 0);
+  //   // 接続先指定用構造体の準備(python側の設定を書く。宛先の設定)
+  //   addr.sin_family = AF_INET;
+  //   // ポート番号
+  //   addr.sin_port = htons(10051);
+  //   // このIPは自分自身(PC)を示す
+  //   addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+  //   // サーバに接続
+  //   connect_mode = connect(sock, (struct sockaddr *)&addr, sizeof(addr));
+  //   // ファイルディスクリプタ集合の中身をクリア
+  //   FD_ZERO(&fds);
+  //   // ファイルディスクリプタ集合を設定
+  //   FD_SET(sock, &fds);
+  //   printf("CONNECT SOCK DONE\n");
+  //   camera_count++;
+  // }
 
   /*********************************************************
                          P MODE
   **********************************************************/
   while (ch == 'p') {
+
     // カメラとの接続が怪しい場合は終了
-    if ((connect_mode == -1) || (connect_mode == EINPROGRESS)) {
-      crslave.Disable_Dynamixel_Torque(ID);
-      crslave.Setoperation(POSITION_CONTROL_MODE, ID);
-      crslave.Enable_Dynamixel_Torque(ID);
-      crslave.Move_Goal_Position(save_pose, ID, JOINT_MIN, JOINT_MAX);
-      sleep(5);
-      printf("カメラの読み込み怪しいので終了（S）\n");
-      crslave.Move_Goal_Position(finish_pose, ID, JOINT_MIN, JOINT_MAX);
-      sleep(5);
-      crslave.Disable_Dynamixel_Torque(ID);
-      crslave.Close_port();
-      fclose(crslave.ffp);
-      return NULL;
-    }
+    // if ((connect_mode == -1) || (connect_mode == EINPROGRESS)) {
+    //   crslave.Disable_Dynamixel_Torque(ID);
+    //   crslave.Setoperation(POSITION_CONTROL_MODE, ID);
+    //   crslave.Enable_Dynamixel_Torque(ID);
+    //   crslave.Move_Goal_Position(save_pose, ID, JOINT_MIN, JOINT_MAX);
+    //   sleep(5);
+    //   printf("カメラの読み込み怪しいので終了（S）\n");
+    //   crslave.Move_Goal_Position(finish_pose, ID, JOINT_MIN, JOINT_MAX);
+    //   sleep(5);
+    //   crslave.Disable_Dynamixel_Torque(ID);
+    //   crslave.Close_port();
+    //   fclose(crslave.ffp);
+    //   return NULL;
+    // }
+
     gettimeofday(&start_time_s, NULL);
     crslave.Readpresent_position(ID);
     if ((crslave.present_position[0] == 0.0) ||
@@ -329,6 +337,16 @@ void *slave_control(void *) {
             crslave.target_torque[2], crslave.target_torque[3],
             crslave.target_torque[4], crslave.target_torque[5],
             crslave.target_torque[6], crslave.target_torque[7]);
+    for(int i = 0; i < 8; i++)
+      fprintf(crslave.ffp, "%lf,", crslave.tau_dis[i]);
+    for(int i = 0; i < 8; i++)
+      fprintf(crslave.ffp, "%lf,", crslave.dob0[i]);
+    for(int i = 0; i < 8; i++)
+      fprintf(crslave.ffp, "%lf,", crslave.dob1[i]);
+    for(int i = 0; i < 8; i++)
+      fprintf(crslave.ffp, "%lf,", crslave.dob2[i]);
+    
+    // torque on
     crslave.setCranex7Torque(crslave.goal_torque, ID);
     // 秒単位の時間を取得
     gettimeofday(&end_time_s, NULL);
@@ -363,63 +381,61 @@ void *slave_control(void *) {
   /*********************************************************
                         B MODE
   **********************************************************/
-  printf(
-      "===================================slave_b_controlstart============"
-      "====="
-      "===========\n");
+  printf("==========slave_b_controlstart==========\n");
   while (ch == 'b') {  //データ取得の開始
     gettimeofday(&start_time_s, NULL);
     crslave.datareadflag = 0;
-    /***************************************************
-    pythonとソケット通信（pythonでカメラ保存）
-    ****************************************************/
-    memcpy(&fdw, &fds, sizeof(fd_set));
-    memcpy(&fdr, &fds, sizeof(fd_set));
-    // カメラドライバが画像データの準備を完了するまでアプリケーションをウェイトさせておくには、
-    // select()システムコールを利用します
-    ret = select(sock + 1, &fdr, &fdw, NULL, NULL);
 
-    if ((t_camera % CameraTS) == 0) {
-      // FD_ISSET ファイルディスクリプタがあるかどうか
-      // fdwの中にsockの値が含まれているか調べる
-      if (FD_ISSET(sock, &fdw) && sendf == true) {
-        // ファイルディスクリプターに文字出力する
-        // fnum: 保存するファイルのナンバー
-        // passtime:システム経過時間 けど時刻の更新周期が
-        // 別スレッドで2[ms]周期なので,同期が取れていない
-        // 本スレッドではモーションとの時間計測誤差にプラマイ2[ms]
-        // の誤差が生じる。この誤差自体が影響を与えることは少ないが
-        // 画像データのファイル名に記録する時間が不安定だと
-        // 別プログラムで参照するときに面倒となる
-        // したがって本スレッド専用の時間変数を用意し、利用する
-        dprintf(sock, "%d %5.4f", (int)1, (float)passtime);
-        printf("送信\n");
-        printf("\ntime\t\t:\tsave%d\t\t%8.4f\n", 1, passtime);
-        // 次のデータを受け取るまで待つため，送信するフラグを下げる
-        sendf = false;
-      }
-    } else if (((t_camera + 1) % CameraTS) == 0) {
-      // FD_ISSET ファイルディスクリプタがあるかどうか
-      // fdwの中にsockの値が含まれているか調べる
-      if (FD_ISSET(sock, &fdr) && sendf == false) {
-        // sock: ソケット記述子
-        // rbuf: データを受け取るバッファへのポインタ
-        // ll: メッセージまたはデータグラムの長さ (バイト単位) を戻す
-        ll = recv(sock, rbuf, sizeof(rbuf), 0);
-        printf("受信\n");
-        // データの終わり地点に0を入れる
-        *(rbuf + ll) = 0;
-        sendf = true;
-        // 分解対象文字列 rbuf を "," を区切りに字句に分解
-        // 字句（文字列の先頭）へのポインタを返す
-        tp = strtok(rbuf, ",");
-        // double型に変換
-        a[0] = atof(tp);
-      }
-    }
-    // カメラ実行周期(1[ms])のループカウンタ
-    t_camera++;
-    //-----------------------------------------------------------
+    // /***************************************************
+    // pythonとソケット通信（pythonでカメラ保存）
+    // ****************************************************/
+    // memcpy(&fdw, &fds, sizeof(fd_set));
+    // memcpy(&fdr, &fds, sizeof(fd_set));
+    // // カメラドライバが画像データの準備を完了するまでアプリケーションをウェイトさせておくには、
+    // // select()システムコールを利用します
+    // ret = select(sock + 1, &fdr, &fdw, NULL, NULL);
+
+    // if ((t_camera % CameraTS) == 0) {
+    //   // FD_ISSET ファイルディスクリプタがあるかどうか
+    //   // fdwの中にsockの値が含まれているか調べる
+    //   if (FD_ISSET(sock, &fdw) && sendf == true) {
+    //     // ファイルディスクリプターに文字出力する
+    //     // fnum: 保存するファイルのナンバー
+    //     // passtime:システム経過時間 けど時刻の更新周期が
+    //     // 別スレッドで2[ms]周期なので,同期が取れていない
+    //     // 本スレッドではモーションとの時間計測誤差にプラマイ2[ms]
+    //     // の誤差が生じる。この誤差自体が影響を与えることは少ないが
+    //     // 画像データのファイル名に記録する時間が不安定だと
+    //     // 別プログラムで参照するときに面倒となる
+    //     // したがって本スレッド専用の時間変数を用意し、利用する
+    //     dprintf(sock, "%d %5.4f", (int)1, (float)passtime);
+    //     printf("送信\n");
+    //     printf("\ntime\t\t:\tsave%d\t\t%8.4f\n", 1, passtime);
+    //     // 次のデータを受け取るまで待つため，送信するフラグを下げる
+    //     sendf = false;
+    //   }
+    // } else if (((t_camera + 1) % CameraTS) == 0) {
+    //   // FD_ISSET ファイルディスクリプタがあるかどうか
+    //   // fdwの中にsockの値が含まれているか調べる
+    //   if (FD_ISSET(sock, &fdr) && sendf == false) {
+    //     // sock: ソケット記述子
+    //     // rbuf: データを受け取るバッファへのポインタ
+    //     // ll: メッセージまたはデータグラムの長さ (バイト単位) を戻す
+    //     ll = recv(sock, rbuf, sizeof(rbuf), 0);
+    //     printf("受信\n");
+    //     // データの終わり地点に0を入れる
+    //     *(rbuf + ll) = 0;
+    //     sendf = true;
+    //     // 分解対象文字列 rbuf を "," を区切りに字句に分解
+    //     // 字句（文字列の先頭）へのポインタを返す
+    //     tp = strtok(rbuf, ",");
+    //     // double型に変換
+    //     a[0] = atof(tp);
+    //   }
+    // }
+    // // カメラ実行周期(1[ms])のループカウンタ
+    // t_camera++;
+    // //-----------------------------------------------------------
 
     for (int i = 0; i < JOINT_NUM2; i++) {
       // 読み込みのデータを設定(現在角度)
@@ -603,6 +619,15 @@ void *slave_control(void *) {
             crslave.target_torque[2], crslave.target_torque[3],
             crslave.target_torque[4], crslave.target_torque[5],
             crslave.target_torque[6], crslave.target_torque[7]);
+    for(int i = 0; i < 8; i++)
+      fprintf(crslave.ffp, "%lf,", crslave.tau_dis[i]);
+    for(int i = 0; i < 8; i++)
+      fprintf(crslave.ffp, "%lf,", crslave.dob0[i]);
+    for(int i = 0; i < 8; i++)
+      fprintf(crslave.ffp, "%lf,", crslave.dob1[i]);
+    for(int i = 0; i < 8; i++)
+      fprintf(crslave.ffp, "%lf,", crslave.dob2[i]);
+
     // トルクをセット
     crslave.setCranex7Torque(crslave.goal_torque, ID);
 
@@ -701,6 +726,14 @@ void *master_control(void *) {
   fprintf(crmaster.ffp,
           "s_tau_res[0],s_tau_res[1],s_tau_res[2],s_tau_res[3],s_tau_res[4],s_"
           "tau_res[5],s_tau_res[6],s_tau_res[7],");
+  for(int i = 0; i < 8; i++)
+    fprintf(crmaster.ffp, "%lf,", crmaster.tau_dis[i]);
+  for(int i = 0; i < 8; i++)
+    fprintf(crmaster.ffp, "%lf,", crmaster.dob0[i]);
+  for(int i = 0; i < 8; i++)
+    fprintf(crmaster.ffp, "%lf,", crmaster.dob1[i]);
+  for(int i = 0; i < 8; i++)
+    fprintf(crmaster.ffp, "%lf,", crmaster.dob2[i]);
   fprintf(crmaster.ffp, "sleeptime,controltime\n");
 
   crmaster.Readpresent_position(ID);
