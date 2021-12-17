@@ -14,15 +14,11 @@ class MotionDataset(Dataset):
         data_num: int = None,
         train: bool = True,
         split_ratio: float = 0.8,
-        start_step: int = 50,
         max_length: int = None,
-        # normalization: bool = True,
-        # split_seq: bool = False,
     ):
         self.train = train
 
         state_list = []
-        # image_idx_list = []
 
         folders = glob.glob('{}/*'.format(datafolder))
 
@@ -67,20 +63,10 @@ class MotionDataset(Dataset):
                 state = torch.tensor(np.array(df))
 
                 skip_num = 20
-                # l = max_length + 1 + start_step
-                # if len(state) > max_length and split_seq:
-                #     # split sequence
-                #     state = self._split_list(state, l * skip_num)
-                # else:
-                #     # padding
-                #     state = [self._padding(state, l * skip_num)]
-                # print(state.shape)
 
                 # decimation
-                # for state_part in state:
                 for start in range(skip_num):
                     state_list.append(state[start::skip_num])
-                        # print(len(state_part[start::skip_num]))
 
         # padding
         if max_length is None:
@@ -91,16 +77,7 @@ class MotionDataset(Dataset):
         self.state = torch.stack([self._padding(data_part, self.max_length)
             for data_part in state_list])
 
-        # state = torch.stack(state_list)
-        # self.image_idx = torch.tensor(image_idx_list)
-
-        # skip head data
-        # self.state = self.state[:, start_step:]
-
-        # self.state_s = state[:, :, :24]
-        # self.state_m = state[:, :, 24:]
-
-        # # normalization
+        # normalization
         # batch_size, steps, _ = self.state_m.shape
         # state_m = self.state_m.reshape(batch_size * steps, -1)
         # self.mean = torch.mean(state_m, axis=0, keepdims=True)
@@ -122,8 +99,6 @@ class MotionDataset(Dataset):
         return len(self.state)
 
     def __getitem__(self, idx):
-        # state_s = self.state_s[idx]
-        # state_m = self.state_m[idx]
         state = self.state[idx]
 
         # for pytorch dataloader

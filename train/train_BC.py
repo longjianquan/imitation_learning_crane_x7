@@ -18,6 +18,7 @@ from model.TransformerImitation import TransformerImitation
 from dataset.fast_dataloader import FastDataLoader
 from dataset.motion_dataset import MotionDataset
 from dataset.sin_wave_dataset import SinWaveDataset
+from model.LSTMImitation import LSTMImitation
 # from model.SpatialAE import SpatialAE
 # from dataset.motion_image_dataset import MotionImageDataset
 
@@ -82,8 +83,14 @@ class BCTrainer(Tranier):
         print('valid data num:', len(valid_dataset))
 
         self.dim = train_dataset.state.shape[-1]
-        model = TransformerImitation(dim=self.dim)
+        # model = TransformerImitation(dim=self.dim)
         # model = CNNImitation(dim=train_dataset.state_m.shape[-1])
+        model = LSTMImitation(
+            input_dim=self.dim,
+            output_dim=self.dim,
+            LSTM_dim=400,
+            LSTM_layer_num=6,
+        )
 
         optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
@@ -164,12 +171,13 @@ class BCTrainer(Tranier):
 
             fig_state = plot_state(state_ans[:, 24:], pred[:, 24:])
             fig_state.suptitle('{} epoch'.format(epoch))
-            path_state_png = os.path.join(self.out_dir, 'state.png')
+            path_state_png = os.path.join(self.out_dir, 'state_leader.png')
             fig_state.savefig(path_state_png)
 
             fig_state_slave = plot_state(state_ans, pred)
             fig_state_slave.suptitle('{} epoch'.format(epoch))
-            path_state_slave_png = os.path.join(self.out_dir, 'state_slave.png')
+            path_state_slave_png = os.path.join(
+                self.out_dir, 'state_follower.png')
             fig_state_slave.savefig(path_state_slave_png)
 
             generated = self.generate(
@@ -186,8 +194,8 @@ class BCTrainer(Tranier):
             if self.wandb_flag:
                 wandb.log({
                     'epoch': epoch,
-                    'state': wandb.Image(fig_state),
-                    'state_slave': wandb.Image(fig_state_slave),
+                    'state_leader': wandb.Image(fig_state),
+                    'state_follower': wandb.Image(fig_state_slave),
                     'generated': wandb.Image(fig_generated),
                 })
                 wandb.save(path_state_png)
