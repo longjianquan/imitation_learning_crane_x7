@@ -71,7 +71,7 @@ def argparse():
     from argparse import ArgumentParser
     parser = ArgumentParser()
     parser.add_argument('--data_path', type=str,
-        default='./crane_x7/build/slave1.csv')
+        default='./crane_x7/src/build_bilateral/slave.csv')
     args = parser.parse_args()
     return args
 

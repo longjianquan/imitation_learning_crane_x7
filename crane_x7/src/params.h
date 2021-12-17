@@ -21,7 +21,7 @@ static double finish_pose[JOINT_NUM] = {
 };  // 動作終了時の位置(rad)
 
 // サーボのトルク制御モードでの速度リミットの設定
-static double LIMIT_SPEED[JOINT_NUM] = {3.0, 2.0, 2.0, 2.5, 4.5, 4.5, 4.0, 6.0};
+static double LIMIT_SPEED[JOINT_NUM] = {3.0, 2.0, 2.0, 2.5, 4.5, 4.5, 8.0, 8.0};
 
 // 物理パラメータ
 static double J[2][JOINT_NUM] = {
