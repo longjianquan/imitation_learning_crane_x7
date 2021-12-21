@@ -33,6 +33,7 @@ static double p_th_s_res[JOINT_NUM], p_dth_s_res[JOINT_NUM],
 static double p_tau_m_res[JOINT_NUM], p_tau_s_res[JOINT_NUM];
 
 const char *devicename1 = "/dev/ttyUSB0";
+// const char *devicename1 = "/dev/ttyUSB1";
 
 // socket communication
 double a[21];

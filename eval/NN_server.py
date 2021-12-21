@@ -3,7 +3,7 @@ import socket
 import numpy as np
 import torch
 from torchvision import transforms
-import cv2
+# import cv2
 from PIL import Image
 import os
 
@@ -64,23 +64,23 @@ from SocketServer import SocketServer
 #     return f'receive "{msg}"'
 
 
-class ImageServer():
-    def __init__(self, image_size: int = 64):
-        self.cap = cv2.VideoCapture(0)
+# class ImageServer():
+#     def __init__(self, image_size: int = 64):
+#         self.cap = cv2.VideoCapture(0)
 
-        self.transform = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Resize(image_size),
-            transforms.CenterCrop(image_size),
-        ])
+#         self.transform = transforms.Compose([
+#             transforms.ToTensor(),
+#             transforms.Resize(image_size),
+#             transforms.CenterCrop(image_size),
+#         ])
 
-        self.getImage()
+#         self.getImage()
 
-    def getImage(self):
-        ret, frame = self.cap.read()
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        frame = self.transform(frame)
-        return frame
+#     def getImage(self):
+#         ret, frame = self.cap.read()
+#         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+#         frame = self.transform(frame)
+#         return frame
 
 
 class AE_LSTM_Server(SocketServer):
@@ -93,7 +93,7 @@ class AE_LSTM_Server(SocketServer):
         device: torch.device = torch.device('cpu'),
         mean: np.ndarray = None,
         std: np.ndarray = None,
-        input_dim: int = 24,
+        input_dim: int = 48,
         getImage: callable = None,
         output_dir: str = './results/images/',
     ):
@@ -119,7 +119,7 @@ class AE_LSTM_Server(SocketServer):
             input_dim=input_dim+image_feature_dim,
             output_dim=input_dim,
             LSTM_dim=400,
-            LSTM_layer_num=5,
+            LSTM_layer_num=6,
         )
         state_dict = self.load_model_param(path_LSTM_param)
         self.lstm.load_state_dict(state_dict)
@@ -140,27 +140,34 @@ class AE_LSTM_Server(SocketServer):
         # return f'receive "{msg}"'
         data = np.fromstring(msg, dtype=np.float32 , sep=' ')
         # state_dim = 21
-        state = data[:self.input_dim]
+        # state = data[:self.input_dim]
         # state = np.tile(data[:state_dim], 2)
+
+        state = data[:self.input_dim // 2]
+
+        # format
+        state = torch.from_numpy(state.astype(np.float32)).to(self.device)
+        state = state.repeat(2)
+        state[-8:-1] = -state[-8:-1]
+        state = state.unsqueeze(0).unsqueeze(0)
         print('state shape:', state.shape)
+        
         # image = None
         # while image == None:
         # image = load_image('../repro/video_rgb0/rgb{:.3f}.jpg'.format(data[state_dim]))
-        image = self.getImage()
-        print('image shape:', image.shape)
+        if self.getImage is not None:
+            image = self.getImage()
+            print('image shape:', image.shape)
+            image = image.to(self.device)
+            print('image shape:', image.shape)
+            image = image.unsqueeze(0)
 
         # prediction
-        state = (state - self.mean) / self.std
-
-        state = torch.from_numpy(state.astype(np.float32)).to(self.device)
-        image = image.to(self.device)
-
-        state = state.unsqueeze(0).unsqueeze(0)
-
+        # state = (state - self.mean) / self.std
+        # state = torch.from_numpy(state.astype(np.float32)).to(self.device)
+        # state = state.unsqueeze(0).unsqueeze(0)
         print('state shape:', state.shape)
-        print('image shape:', image.shape)
-
-        image = image.unsqueeze(0)
+        
         # image_feature = self.image_encoder(image)
         # state = torch.cat([state, image_feature.unsqueeze(0)], dim=2)
         
@@ -170,19 +177,22 @@ class AE_LSTM_Server(SocketServer):
         #     image_feature, image_size=image.shape[-1])
 
         state_hat = state_hat.cpu().detach().numpy().flatten()
-        state_hat = state_hat * self.std + self.mean
+        # state_hat = state_hat * self.std + self.mean
         print('state_hat:', state_hat)
 
-        image = image.squeeze().cpu().detach().numpy()
-        image = image.transpose(1, 2, 0)
-        # image_hat = image_hat.squeeze().cpu().detach().numpy()
-        # image_hat = image_hat.transpose(1, 2, 0)
-        # frame = np.concatenate([image, image_hat], axis=1)
-        # self.writer.writeFrame(frame)
-        # self.frames.append((255 * frame).astype(np.uint8))
-        frame = image
-        frame = Image.fromarray((255 * frame).astype(np.uint8), mode=None)
-        frame.save(self.output_dir + f'/pred{data[-1]:.3f}.jpg')
+        if self.getImage is not None:
+            image = image.squeeze().cpu().detach().numpy()
+            image = image.transpose(1, 2, 0)
+            # image_hat = image_hat.squeeze().cpu().detach().numpy()
+            # image_hat = image_hat.transpose(1, 2, 0)
+            # frame = np.concatenate([image, image_hat], axis=1)
+            # self.writer.writeFrame(frame)
+            # self.frames.append((255 * frame).astype(np.uint8))
+            frame = image
+            frame = Image.fromarray((255 * frame).astype(np.uint8), mode=None)
+            frame.save(self.output_dir + f'/pred{data[-1]:.3f}.jpg')
+
+        state_hat = state_hat[24:]
 
         # temporary
         state_hat = np.delete(state_hat, [2, 10, 18])
@@ -224,13 +234,13 @@ def main(args):
     # server = SocketServer()
     # server.standby(callback=callback)
 
-    imageServer = ImageServer(image_size=128)
+    # imageServer = ImageServer(image_size=128)
 
     server = AE_LSTM_Server(
         device=device,
         path_AE_param=args.path_AE_param,
-        path_LSTM_param=args.path_LSTM_param,
-        getImage=imageServer.getImage,
+        path_LSTM_param=args.model,
+        # getImage=imageServer.getImage,
     )
     server.standby()
     # server.save_gif('result.gif')
@@ -240,7 +250,7 @@ def argparse():
     parser = ArgumentParser()
     parser.add_argument('--path_AE_param', type=str,
         default='./model_param/SpatialAE_param.pt')
-    parser.add_argument('--path_LSTM_param', type=str,
+    parser.add_argument('--model', type=str,
         default='./model_param/LSTM_param.pt')
     parser.add_argument('--path_output_image', type=str,
         default='./results/images/')
