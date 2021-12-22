@@ -51,7 +51,14 @@ class Tranier():
             os.makedirs(out_dir)
         print(f'save to {out_dir}')
 
-    def _print_progress_bar(i, length, width=None, end='\n', header=''):
+    def _print_progress_bar(
+        self,
+        i: int,
+        length: int,
+        width: int = None,
+        end: str = '\n',
+        header: str = '',
+    ):
         digits = len(str(length))
         i_str = format(i+1, '0' + str(digits))
         footer = '{}/{}'.format(i_str, length)
