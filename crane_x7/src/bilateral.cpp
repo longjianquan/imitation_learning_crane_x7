@@ -30,13 +30,13 @@ int ttt = 0;
 static char ch = 'p';
 static double passtime = 0.0;
 
-static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+// static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
-static double p_th_m_res[JOINT_NUM], p_dth_m_res[JOINT_NUM],
-    p_ddth_m_res[JOINT_NUM];
-static double p_th_s_res[JOINT_NUM], p_dth_s_res[JOINT_NUM],
-    p_ddth_s_res[JOINT_NUM];
-static double p_tau_m_res[JOINT_NUM], p_tau_s_res[JOINT_NUM];
+// static double p_th_m_res[JOINT_NUM], p_dth_m_res[JOINT_NUM],
+//     p_ddth_m_res[JOINT_NUM];
+// static double p_th_s_res[JOINT_NUM], p_dth_s_res[JOINT_NUM],
+//     p_ddth_s_res[JOINT_NUM];
+// static double p_tau_m_res[JOINT_NUM], p_tau_s_res[JOINT_NUM];
 
 const char *devicename1 = "/dev/ttyUSB0";  //こっちがスレーブ
 const char *devicename2 = "/dev/ttyUSB1";  //こっちがマスター
@@ -59,19 +59,22 @@ double a[1];
 // 41[ms]周期でカメラから信号（ utf8("1") ）を受信する
 // 上記の処理を分けて実行するためにカメラスレッドの実行周期を1[ms]にし
 // カウンタによる制御から分けて実行する
-static int t_camera = 0;
+// static int t_camera = 0;
 // また上記の処理を一方のみ実行するためにフラグを管理
-static int sendf = true;
+// static int sendf = true;
 // ---------------------------- カメラ制御　グローバル変数
 #define SEND_MODE 0
 #define RECV_MODE 1
 int sock_sendrecv_flag = SEND_MODE;
 // カメラスレッドの初回実行かどうかの確認
-static int camera_count = 0;
-int camera_active_flag = true;
-int CameraTS = 20;
+// static int camera_count = 0;
+// int camera_active_flag = true;
+// int CameraTS = 20;
 
-void *slave_control(void *) {
+CR7 crane_s(devicename1, SLAVE);
+CR7 crane_m(devicename2, MASTER);
+
+void *crane_s_control(void *) {
   double control_time_s;
   long sleep_time_s;
   struct timeval start_time_s;
@@ -83,114 +86,60 @@ void *slave_control(void *) {
   // struct timeval start_time_camera;
   // struct timeval end_time_camera;
 
-  /* --------- CR7 の型でcrslaveを定義 ----------- */
-  CR7 crslave(devicename1, SLAVE);
-  if (!crslave.Open_port()) return NULL;  // COMポートを開く
-  if (!crslave.Set_port_baudrate()) {     // 通信レートの設定
-    crslave.Close_port();                 // 通信ポートを閉じる
+  /* --------- CR7 の型でcrane_sを定義 ----------- */
+  if (!crane_s.Open_port()) return NULL;  // COMポートを開く
+  if (!crane_s.Set_port_baudrate()) {     // 通信レートの設定
+    crane_s.Close_port();                 // 通信ポートを閉じる
     return NULL;
   }
-  crslave.Setoperation(POSITION_CONTROL_MODE, ID);
+  crane_s.Setoperation(POSITION_CONTROL_MODE, ID);
   // 全サーボのトルクをON
-  crslave.Enable_Dynamixel_Torque(ID);
+  crane_s.Enable_Dynamixel_Torque(ID);
   // 設定されているgoal positionに移動（1回目ー＞アームが横に向く）
-  crslave.Move_Goal_Position(save_pose, ID, JOINT_MIN, JOINT_MAX);
+  crane_s.Move_Theta_Ref(save_pose, ID, JOINT_MIN, JOINT_MAX);
 
   // 初期位置を設定
-  for (int i = 0; i < JOINT_NUM2; i++) {
-    crslave.goal_position[i] = goal_pose[i];
-    crslave.goal_velocity[i] = 0.0;
-    crslave.target_torque[i] = 0.0;
-    p_th_s_res[i] = crslave.present_position[i];
-    ;
-    p_dth_s_res[i] = crslave.d_theta_res[i];
-    p_tau_s_res[i] = crslave.tau_res[i];
-  }
+  // for (int i = 0; i < JOINT_NUM2; i++) {
+  //   crane_s.theta_ref[i] = goal_pose[i];
+  //   crane_s.omega_ref[i] = 0.0;
+  //   crane_s.tau_ref[i] = 0.0;
+  //   // p_th_s_res[i] = crane_s.theta_res[i];
+  //   // p_dth_s_res[i] = crane_s.omega_res[i];
+  //   // p_tau_s_res[i] = crane_s.tau_res[i];
+  // }
 
   sleep(5);
   // 設定されているgoal positionに移動（1回目ー＞アームが正面に向く）;
-  crslave.Move_Goal_Position(goal_pose, ID, JOINT_MIN, JOINT_MAX);
+  crane_s.Move_Theta_Ref(goal_pose, ID, JOINT_MIN, JOINT_MAX);
   sleep(5);
   // 電源をOFFにしてから電流制御モードに移行
-  crslave.Disable_Dynamixel_Torque(ID);
+  crane_s.Disable_Dynamixel_Torque(ID);
   // 電流制御モード
-  crslave.Setoperation(CURRENT_CONTROL_MODE, ID);
-  crslave.Enable_Dynamixel_Torque(ID);
+  crane_s.Setoperation(CURRENT_CONTROL_MODE, ID);
+  crane_s.Enable_Dynamixel_Torque(ID);
 
   /**********************************************************
    *    モーションデータをテキストに保存（初期位置）         *
    ***********************************************************/
-  printf("==========slave_p_controlstart==========\n");
-  crslave.ffp = fopen(crslave.filename2.c_str(), "w");
-  // fprintf(crslave.ffp,
-  //         "time,s_presentposition[0],s_presentposition[1],s_presentposition[2],"
-  //         "s_presentposition[3],s_presentposition[4],s_presentposition[5],s_"
-  //         "presentposition[6],s_presentposition[7],");
-  // fprintf(crslave.ffp,
-  //         "s_presentvelocity[0],s_presentvelocity[1],s_presentvelocity[2],s_"
-  //         "presentvelocity[3],s_presentvelocity[4],s_presentvelocity[5],s_"
-  //         "presentvelocity[6],s_presentvelocity[7],");
-  // fprintf(crslave.ffp,
-  //         "s_tau_res[0],s_tau_res[1],s_tau_res[2],s_tau_res[3],s_tau_res[4],s_"
-  //         "tau_res[5],s_tau_res[6],s_tau_res[7],");
-  // fprintf(crslave.ffp,
-  //         "m_presentposition[0],m_presentposition[1],m_presentposition[2],m_"
-  //         "presentposition[3],m_presentposition[4],m_presentposition[5],m_"
-  //         "presentposition[6],m_presentposition[7],");
-  // fprintf(crslave.ffp,
-  //         "m_presentvelocity[0],m_presentvelocity[1],m_presentvelocity[2],m_"
-  //         "presentvelocity[3],m_presentvelocity[4],m_presentvelocity[5],m_"
-  //         "presentvelocity[6],m_presentvelocity[7],");
-  // fprintf(crslave.ffp,
-  //         "m_tau_res[0],m_tau_res[1],m_tau_res[2],m_tau_res[3],m_tau_res[4],m_"
-  //         "tau_res[5],m_tau_res[6],m_tau_res[7],");
-  fprintf(crslave.ffp, "time,");
+  printf("==========crane_s_p_controlstart==========\n");
 
-  for(int i = 0; i < 8; i++)
-    fprintf(crslave.ffp, "s_presentposition[%d],", i);
-  for(int i = 0; i < 8; i++)
-    fprintf(crslave.ffp, "s_presentvelocity[%d],", i);
-  for(int i = 0; i < 8; i++)
-    fprintf(crslave.ffp, "s_tau_res[%d],", i);
-
-  for(int i = 0; i < 8; i++)
-    fprintf(crslave.ffp, "m_presentposition[%d],", i);
-  for(int i = 0; i < 8; i++)
-    fprintf(crslave.ffp, "m_presentvelocity[%d],", i);
-  for(int i = 0; i < 8; i++)
-    fprintf(crslave.ffp, "m_tau_res[%d],", i);
-
-  for(int i = 0; i < 8; i++)
-    fprintf(crslave.ffp, "s_goal_torque[%d],", i);
-  for(int i = 0; i < 8; i++)
-    fprintf(crslave.ffp, "s_tau_dis[%d],", i);
-  for(int i = 0; i < 8; i++)
-    fprintf(crslave.ffp, "s_dob0[%d],", i);
-  for(int i = 0; i < 8; i++)
-    fprintf(crslave.ffp, "s_dob1[%d],", i);
-  for(int i = 0; i < 8; i++)
-    fprintf(crslave.ffp, "s_dob2[%d],", i);
-
-  fprintf(crslave.ffp, "sleeptime,controltime\n");
-
-  crslave.Readpresent_position(ID);
-  if ((crslave.present_position[0] == 0.0) ||
-      (crslave.present_position[7] == 0.0)) {
-    crslave.Disable_Dynamixel_Torque(ID);
-    crslave.Setoperation(POSITION_CONTROL_MODE, ID);
-    crslave.Enable_Dynamixel_Torque(ID);
-    crslave.Move_Goal_Position(save_pose, ID, JOINT_MIN, JOINT_MAX);
+  crane_s.Readtheta_res(ID);
+  if ((crane_s.theta_res[0] == 0.0) || (crane_s.theta_res[7] == 0.0)) {
+    crane_s.Disable_Dynamixel_Torque(ID);
+    crane_s.Setoperation(POSITION_CONTROL_MODE, ID);
+    crane_s.Enable_Dynamixel_Torque(ID);
+    crane_s.Move_Theta_Ref(save_pose, ID, JOINT_MIN, JOINT_MAX);
     sleep(5);
-    printf("slave読み込み怪しいので終了\n");
-    crslave.Move_Goal_Position(finish_pose, ID, JOINT_MIN, JOINT_MAX);
+    printf("crane_s読み込み怪しいので終了\n");
+    crane_s.Move_Theta_Ref(finish_pose, ID, JOINT_MIN, JOINT_MAX);
     sleep(5);
-    crslave.Disable_Dynamixel_Torque(ID);
-    crslave.Close_port();
-    fclose(crslave.ffp);
+    crane_s.Disable_Dynamixel_Torque(ID);
+    crane_s.Close_port();
+    fclose(crane_s.ffp);
     return NULL;
   }
   for (int j = 0; j < JOINT_NUM2; j++) {
-    crslave.d_theta_temp[j] = crslave.present_position[j];
+    crane_s.d_theta_temp[j] = crane_s.theta_res[j];
   }
 
   /*********************************************************
@@ -220,182 +169,68 @@ void *slave_control(void *) {
                          P MODE
   **********************************************************/
   while (ch == 'p') {
-
     // カメラとの接続が怪しい場合は終了
     // if ((connect_mode == -1) || (connect_mode == EINPROGRESS)) {
-    //   crslave.Disable_Dynamixel_Torque(ID);
-    //   crslave.Setoperation(POSITION_CONTROL_MODE, ID);
-    //   crslave.Enable_Dynamixel_Torque(ID);
-    //   crslave.Move_Goal_Position(save_pose, ID, JOINT_MIN, JOINT_MAX);
+    //   crane_s.Disable_Dynamixel_Torque(ID);
+    //   crane_s.Setoperation(POSITION_CONTROL_MODE, ID);
+    //   crane_s.Enable_Dynamixel_Torque(ID);
+    //   crane_s.Move_Theta_Ref(save_pose, ID, JOINT_MIN, JOINT_MAX);
     //   sleep(5);
     //   printf("カメラの読み込み怪しいので終了（S）\n");
-    //   crslave.Move_Goal_Position(finish_pose, ID, JOINT_MIN, JOINT_MAX);
+    //   crane_s.Move_Theta_Ref(finish_pose, ID, JOINT_MIN, JOINT_MAX);
     //   sleep(5);
-    //   crslave.Disable_Dynamixel_Torque(ID);
-    //   crslave.Close_port();
-    //   fclose(crslave.ffp);
+    //   crane_s.Disable_Dynamixel_Torque(ID);
+    //   crane_s.Close_port();
+    //   fclose(crane_s.ffp);
     //   return NULL;
     // }
 
     gettimeofday(&start_time_s, NULL);
-    crslave.Readpresent_position(ID);
-    if ((crslave.present_position[0] == 0.0) ||
-        (crslave.present_position[7] == 0.0)) {
-      crslave.Disable_Dynamixel_Torque(ID);
-      crslave.Setoperation(POSITION_CONTROL_MODE, ID);
-      crslave.Enable_Dynamixel_Torque(ID);
-      crslave.Move_Goal_Position(save_pose, ID, JOINT_MIN, JOINT_MAX);
+    crane_s.Readtheta_res(ID);
+    if ((crane_s.theta_res[0] == 0.0) || (crane_s.theta_res[7] == 0.0)) {
+      crane_s.Disable_Dynamixel_Torque(ID);
+      crane_s.Setoperation(POSITION_CONTROL_MODE, ID);
+      crane_s.Enable_Dynamixel_Torque(ID);
+      crane_s.Move_Theta_Ref(save_pose, ID, JOINT_MIN, JOINT_MAX);
       sleep(5);
-      printf("slave読み込み怪しいので終了\n");
-      crslave.Move_Goal_Position(finish_pose, ID, JOINT_MIN, JOINT_MAX);
+      printf("crane_s読み込み怪しいので終了\n");
+      crane_s.Move_Theta_Ref(finish_pose, ID, JOINT_MIN, JOINT_MAX);
       sleep(5);
-      crslave.Disable_Dynamixel_Torque(ID);
-      crslave.Close_port();
-      fclose(crslave.ffp);
+      crane_s.Disable_Dynamixel_Torque(ID);
+      crane_s.Close_port();
+      fclose(crane_s.ffp);
       return NULL;
     }
 
     for (int i = 0; i < JOINT_NUM2; i++) {
-      crslave.d_theta_res[i] =
-          (crslave.present_position[i] - crslave.d_theta_temp[i]) * g[i];
-      crslave.d_theta_temp[i] += crslave.d_theta_res[i] * ts;
+      crane_s.omega_res[i] =
+          (crane_s.theta_res[i] - crane_s.d_theta_temp[i]) * g[i];
+      crane_s.d_theta_temp[i] += crane_s.omega_res[i] * ts;
     }
 
     for (int i = 0; i < JOINT_NUM2; i++) {
-      if (fabs(crslave.d_theta_res[i]) >= LIMIT_SPEED[i]) {
-        crslave.Disable_Dynamixel_Torque(ID);
-        crslave.Setoperation(POSITION_CONTROL_MODE, ID);
-        crslave.Enable_Dynamixel_Torque(ID);
-        crslave.Move_Goal_Position(save_pose, ID, JOINT_MIN, JOINT_MAX);
+      if (fabs(crane_s.omega_res[i]) >= LIMIT_SPEED[i]) {
+        crane_s.Disable_Dynamixel_Torque(ID);
+        crane_s.Setoperation(POSITION_CONTROL_MODE, ID);
+        crane_s.Enable_Dynamixel_Torque(ID);
+        crane_s.Move_Theta_Ref(save_pose, ID, JOINT_MIN, JOINT_MAX);
         sleep(5);
-        printf("crslaveの軸%dが速いので終了\n", i);
-        crslave.Move_Goal_Position(finish_pose, ID, JOINT_MIN, JOINT_MAX);
+        printf("crane_sの軸%dが速いので終了\n", i);
+        crane_s.Move_Theta_Ref(finish_pose, ID, JOINT_MIN, JOINT_MAX);
         sleep(5);
-        crslave.Disable_Dynamixel_Torque(ID);
-        crslave.Close_port();
-        fclose(crslave.ffp);
+        crane_s.Disable_Dynamixel_Torque(ID);
+        crane_s.Close_port();
+        fclose(crane_s.ffp);
         return NULL;
       }
     }
 
-    for (int i = 0; i < JOINT_NUM2; i++) {
-      crslave.tau_p[i] =
-          J[SLAVE][i] *
-          (Kp[SLAVE][i] *
-               (crslave.goal_position[i] - crslave.present_position[i]) +
-           Kd[SLAVE][i] * (crslave.goal_velocity[i] - crslave.d_theta_res[i]));
-      // 力制御によるトルク参照値
-      crslave.tau_f[i] =
-          Kf[SLAVE][i] * (-crslave.target_torque[i] - crslave.tau_res[i]);
-      if (i == 7) {
-        crslave.goal_torque[i] =
-            crslave.tau_p[i] + crslave.tau_f[i] + crslave.tau_dis[i];
-      } else {
-        crslave.goal_torque[i] =
-            crslave.tau_p[i] + crslave.tau_f[i] + crslave.tau_dis[i];
-      }
-      // DOB
-      crslave.dob0[i] =
-          crslave.goal_torque[i] + g[i] * J[SLAVE][i] * crslave.d_theta_res[i];
-      crslave.dob1[i] = g[i] * (crslave.dob0[i] - crslave.dob2[i]);
-      crslave.dob2[i] += crslave.dob1[i] * ts;
-      //外乱トルクの算出
-      crslave.tau_dis[i] =
-          crslave.dob2[i] - g[i] * J[SLAVE][i] * crslave.d_theta_res[i];
-    }
+    // calculate input torque
+    crane_s.position_control(goal_pose);
 
-    crslave.tau_res[0] =
-        crslave.tau_dis[0] - D[SLAVE][0] * crslave.d_theta_res[0];
-    crslave.tau_res[1] =
-        crslave.tau_dis[1] - M[SLAVE][0] * sin(crslave.present_position[1]) +
-        M[SLAVE][1] *
-            sin(crslave.present_position[1] + crslave.present_position[3]);
-    crslave.tau_res[2] =
-        crslave.tau_dis[2] - D[SLAVE][1] * crslave.d_theta_res[2];
-    crslave.tau_res[3] =
-        crslave.tau_dis[3] + M[SLAVE][2] * sin(crslave.present_position[1] +
-                                               crslave.present_position[3]);
-    crslave.tau_res[4] =
-        crslave.tau_dis[4] - D[SLAVE][2] * crslave.d_theta_res[4];
-    crslave.tau_res[5] =
-        crslave.tau_dis[5] - D[SLAVE][3] * crslave.d_theta_res[5];
-    crslave.tau_res[6] =
-        crslave.tau_dis[6] - D[SLAVE][4] * crslave.d_theta_res[6];
-    crslave.tau_res[7] =
-        crslave.tau_dis[7] - D[SLAVE][5] * crslave.d_theta_res[7];
+    // set torque
+    // crane_s.setCranex7Torque(crane_s.goal_torque, ID);
 
-    /*******************************************************
-     *    モーションデータをテキストに保存(Pモード)         *
-     ********************************************************/
-    // fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,", passtime,
-    //         crslave.present_position[0], crslave.present_position[1],
-    //         crslave.present_position[2], crslave.present_position[3],
-    //         crslave.present_position[4], crslave.present_position[5],
-    //         crslave.present_position[6], crslave.present_position[7]);
-    // fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,",
-    //         crslave.d_theta_res[0], crslave.d_theta_res[1],
-    //         crslave.d_theta_res[2], crslave.d_theta_res[3],
-    //         crslave.d_theta_res[4], crslave.d_theta_res[5],
-    //         crslave.d_theta_res[6], crslave.d_theta_res[7]);
-    // fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,", crslave.tau_res[0],
-    //         crslave.tau_res[1], crslave.tau_res[2], crslave.tau_res[3],
-    //         crslave.tau_res[4], crslave.tau_res[5], crslave.tau_res[6],
-    //         crslave.tau_res[7]);
-    // fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,",
-    //         crslave.goal_position[0], crslave.goal_position[1],
-    //         crslave.goal_position[2], crslave.goal_position[3],
-    //         crslave.goal_position[4], crslave.goal_position[5],
-    //         crslave.goal_position[6], crslave.goal_position[7]);
-    // fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,",
-    //         crslave.goal_velocity[0], crslave.goal_velocity[1],
-    //         crslave.goal_velocity[2], crslave.goal_velocity[3],
-    //         crslave.goal_velocity[4], crslave.goal_velocity[5],
-    //         crslave.goal_velocity[6], crslave.goal_velocity[7]);
-    // fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,",
-    //         crslave.target_torque[0], crslave.target_torque[1],
-    //         crslave.target_torque[2], crslave.target_torque[3],
-    //         crslave.target_torque[4], crslave.target_torque[5],
-    //         crslave.target_torque[6], crslave.target_torque[7]);
-    // for(int i = 0; i < 8; i++)
-    //   fprintf(crslave.ffp, "%lf,", crslave.goal_torque[i]);
-    // for(int i = 0; i < 8; i++)
-    //   fprintf(crslave.ffp, "%lf,", crslave.tau_dis[i]);
-    // for(int i = 0; i < 8; i++)
-    //   fprintf(crslave.ffp, "%lf,", crslave.dob0[i]);
-    // for(int i = 0; i < 8; i++)
-    //   fprintf(crslave.ffp, "%lf,", crslave.dob1[i]);
-    // for(int i = 0; i < 8; i++)
-    //   fprintf(crslave.ffp, "%lf,", crslave.dob2[i]);
-    fprintf(crslave.ffp, "%lf,", passtime);
-
-    for(int i = 0; i < 8; i++)
-      fprintf(crslave.ffp, "%lf,", crslave.present_position[i]);
-    for(int i = 0; i < 8; i++)
-      fprintf(crslave.ffp, "%lf,", crslave.d_theta_res[i]);
-    for(int i = 0; i < 8; i++)
-      fprintf(crslave.ffp, "%lf,", crslave.tau_res[i]);
-
-    for(int i = 0; i < 8; i++)
-      fprintf(crslave.ffp, "%lf,", crslave.goal_position[i]);
-    for(int i = 0; i < 8; i++)
-      fprintf(crslave.ffp, "%lf,", crslave.goal_velocity[i]);
-    for(int i = 0; i < 8; i++)
-      fprintf(crslave.ffp, "%lf,", crslave.target_torque[i]);
-      
-    for(int i = 0; i < 8; i++)
-      fprintf(crslave.ffp, "%lf,", crslave.goal_torque[i]);
-    for(int i = 0; i < 8; i++)
-      fprintf(crslave.ffp, "%lf,", crslave.tau_dis[i]);
-    for(int i = 0; i < 8; i++)
-      fprintf(crslave.ffp, "%lf,", crslave.dob0[i]);
-    for(int i = 0; i < 8; i++)
-      fprintf(crslave.ffp, "%lf,", crslave.dob1[i]);
-    for(int i = 0; i < 8; i++)
-      fprintf(crslave.ffp, "%lf,", crslave.dob2[i]);
-
-
-    // torque on
-    crslave.setCranex7Torque(crslave.goal_torque, ID);
     // 秒単位の時間を取得
     gettimeofday(&end_time_s, NULL);
     // (終了時間 - 開始時間) + (終了時間 - 開始時間) * 0.000,001
@@ -404,42 +239,44 @@ void *slave_control(void *) {
     // スリープ時間 = ループ周期(20[ms]) - 制御時間 * 1,000,000.0
     sleep_time_s = LOOPTIME - (long)(control_time_s * 1000000.0);
     // スリープ時間が0より下なら 0 にリセット
-    if (sleep_time_s < 0) {
-      sleep_time_s = 0;
-    }
+    if (sleep_time_s < 0) sleep_time_s = 0;
 
-    fprintf(crslave.ffp, "%ld,%lf\n", sleep_time_s, control_time_s);
+    // fprintf(crane_s.ffp, "%ld,%lf\n", sleep_time_s, control_time_s);
+    crane_s.write_csv(passtime, sleep_time_s, control_time_s);
+
     usleep(sleep_time_s);
   }
+
   if (ch != 'b') {
-    crslave.Disable_Dynamixel_Torque(ID);
-    crslave.Setoperation(POSITION_CONTROL_MODE, ID);
-    crslave.Enable_Dynamixel_Torque(ID);
-    crslave.Move_Goal_Position(save_pose, ID, JOINT_MIN, JOINT_MAX);
+    crane_s.Disable_Dynamixel_Torque(ID);
+    crane_s.Setoperation(POSITION_CONTROL_MODE, ID);
+    crane_s.Enable_Dynamixel_Torque(ID);
+    crane_s.Move_Theta_Ref(save_pose, ID, JOINT_MIN, JOINT_MAX);
     sleep(5);
-    crslave.Move_Goal_Position(finish_pose, ID, JOINT_MIN, JOINT_MAX);
-    printf("slave_バイラテ前にqで終了\n");
+    crane_s.Move_Theta_Ref(finish_pose, ID, JOINT_MIN, JOINT_MAX);
+    printf("crane_s_バイラテ前にqで終了\n");
     sleep(5);
-    crslave.Disable_Dynamixel_Torque(ID);
-    crslave.Close_port();
-    fclose(crslave.ffp);
+    crane_s.Disable_Dynamixel_Torque(ID);
+    crane_s.Close_port();
+    fclose(crane_s.ffp);
     return NULL;
   }
 
   /*********************************************************
                         B MODE
   **********************************************************/
-  printf("==========slave_b_controlstart==========\n");
+  printf("==========crane_s_b_controlstart==========\n");
   while (ch == 'b') {  //データ取得の開始
     gettimeofday(&start_time_s, NULL);
-    crslave.datareadflag = 0;
+    crane_s.datareadflag = 0;
 
     // /***************************************************
     // pythonとソケット通信（pythonでカメラ保存）
     // ****************************************************/
     // memcpy(&fdw, &fds, sizeof(fd_set));
     // memcpy(&fdr, &fds, sizeof(fd_set));
-    // // カメラドライバが画像データの準備を完了するまでアプリケーションをウェイトさせておくには、
+    // //
+    // カメラドライバが画像データの準備を完了するまでアプリケーションをウェイトさせておくには、
     // // select()システムコールを利用します
     // ret = select(sock + 1, &fdr, &fdw, NULL, NULL);
 
@@ -487,28 +324,27 @@ void *slave_control(void *) {
 
     for (int i = 0; i < JOINT_NUM2; i++) {
       // 読み込みのデータを設定(現在角度)
-      crslave.dxl_addparam_result = crslave.groupBulkRead->addParam(
-          ID[i], PRESENT_POSITION_ADDRESS, PRESENT_POSITION_DATA_LENGTH);
+      crane_s.dxl_addparam_result = crane_s.groupBulkRead->addParam(
+          ID[i], THETA_RES_ADDRESS, THETA_RES_DATA_LENGTH);
     }
 
     // Bulkread present position (返信データの読み込み)
-    crslave.dxl_comm_result = crslave.groupBulkRead->txRxPacket();
-    if (crslave.dxl_comm_result != COMM_SUCCESS) printf(" discommect \n");
+    crane_s.dxl_comm_result = crane_s.groupBulkRead->txRxPacket();
+    if (crane_s.dxl_comm_result != COMM_SUCCESS) printf(" discommect \n");
     // Check if groupbulkread data of Dynamixel is available
     for (int i = 0; i < JOINT_NUM2; i++) {  // 返信データが利用できるか確認
-      crslave.dxl_getdata_result = crslave.groupBulkRead->isAvailable(
-          ID[i], PRESENT_POSITION_ADDRESS, PRESENT_POSITION_DATA_LENGTH);
-      if (crslave.dxl_getdata_result != true) {
-        crslave.datareadflag++;
+      crane_s.dxl_getdata_result = crane_s.groupBulkRead->isAvailable(
+          ID[i], THETA_RES_ADDRESS, THETA_RES_DATA_LENGTH);
+      if (crane_s.dxl_getdata_result != true) {
+        crane_s.datareadflag++;
       }
     }
-    if (crslave.datareadflag == 0) {
+    if (crane_s.datareadflag == 0) {
       for (int i = 0; i < JOINT_NUM2;
            i++) {  // 返信データから指定のデータを読む
-        crslave.dxl_present_position = crslave.groupBulkRead->getData(
-            ID[i], PRESENT_POSITION_ADDRESS, PRESENT_POSITION_DATA_LENGTH);
-        crslave.present_position[i] =
-            dxlvalue2rad(crslave.dxl_present_position);
+        crane_s.dxl_theta_res = crane_s.groupBulkRead->getData(
+            ID[i], THETA_RES_ADDRESS, THETA_RES_DATA_LENGTH);
+        crane_s.theta_res[i] = dxlvalue2rad(crane_s.dxl_theta_res);
       }
     }
     //------------------------------ 角度の擬似微分
@@ -547,156 +383,59 @@ void *slave_control(void *) {
     // 積分なのでこれまでのサンプリング値にサンプリング時間を乗算したものの和をとればいい
     // これが出力 z(t) を示す
     for (int i = 0; i < JOINT_NUM2; i++) {
-      crslave.d_theta_res[i] =
-          (crslave.present_position[i] - crslave.d_theta_temp[i]) * g[i];
-      crslave.d_theta_temp[i] += crslave.d_theta_res[i] * ts;
+      crane_s.omega_res[i] =
+          (crane_s.theta_res[i] - crane_s.d_theta_temp[i]) * g[i];
+      crane_s.d_theta_temp[i] += crane_s.omega_res[i] * ts;
     }
+
     // 速度制限->  LIMIT_SPEED以上なら停止
     for (int i = 0; i < JOINT_NUM2; i++) {
-      if (fabs(crslave.d_theta_res[i]) >= LIMIT_SPEED[i]) {
-        crslave.Disable_Dynamixel_Torque(ID);
-        crslave.Setoperation(POSITION_CONTROL_MODE, ID);
-        crslave.Enable_Dynamixel_Torque(ID);
-        crslave.Move_Goal_Position(save_pose, ID, JOINT_MIN, JOINT_MAX);
+      if (fabs(crane_s.omega_res[i]) >= LIMIT_SPEED[i]) {
+        crane_s.Disable_Dynamixel_Torque(ID);
+        crane_s.Setoperation(POSITION_CONTROL_MODE, ID);
+        crane_s.Enable_Dynamixel_Torque(ID);
+        crane_s.Move_Theta_Ref(save_pose, ID, JOINT_MIN, JOINT_MAX);
         sleep(5);
-        printf("crslaveの軸%dが速いので終了\n", i);
-        crslave.Move_Goal_Position(finish_pose, ID, JOINT_MIN, JOINT_MAX);
+        printf("crane_sの軸%dが速いので終了\n", i);
+        crane_s.Move_Theta_Ref(finish_pose, ID, JOINT_MIN, JOINT_MAX);
         sleep(5);
-        crslave.Disable_Dynamixel_Torque(ID);
-        crslave.Close_port();
-        fclose(crslave.ffp);
+        crane_s.Disable_Dynamixel_Torque(ID);
+        crane_s.Close_port();
+        fclose(crane_s.ffp);
         return NULL;
       }
     }
+
     // マスタ値を制御目標値にセット
-    pthread_mutex_lock(&mutex);
-    for (int i = 0; i < JOINT_NUM2; i++) {
-      if (i == 2) {
-        p_th_s_res[i] = crslave.present_position[i];
-        p_dth_s_res[i] = crslave.d_theta_res[i];
-        p_tau_s_res[i] = crslave.tau_res[i];
-        crslave.goal_position[i] = 3.14;
-        crslave.goal_velocity[i] = 0.0;
-        crslave.target_torque[i] = 0.0;
-      } else {
-        p_th_s_res[i] = crslave.present_position[i];
-        p_dth_s_res[i] = crslave.d_theta_res[i];
-        p_tau_s_res[i] = crslave.tau_res[i];
-        crslave.goal_position[i] = p_th_m_res[i];
-        crslave.goal_velocity[i] = p_dth_m_res[i];
-        crslave.target_torque[i] = p_tau_m_res[i];
-      }
-    }
+    // pthread_mutex_lock(&mutex);
+    // for (int i = 0; i < JOINT_NUM2; i++) {
+    //   if (i == 2) {
+    //     p_th_s_res[i] = crane_s.theta_res[i];
+    //     p_dth_s_res[i] = crane_s.omega_res[i];
+    //     p_tau_s_res[i] = crane_s.tau_res[i];
+    //     crane_s.theta_ref[i] = 3.14;
+    //     crane_s.omega_ref[i] = 0.0;
+    //     crane_s.tau_ref[i] = 0.0;
+    //   } else {
+    //     p_th_s_res[i] = crane_s.theta_res[i];
+    //     p_dth_s_res[i] = crane_s.omega_res[i];
+    //     p_tau_s_res[i] = crane_s.tau_res[i];
+    //     crane_s.theta_ref[i] = p_th_m_res[i];
+    //     crane_s.omega_ref[i] = p_dth_m_res[i];
+    //     crane_s.tau_ref[i] = p_tau_m_res[i];
+    //   }
+    // }
+    // pthread_mutex_unlock(&mutex);
 
-    pthread_mutex_unlock(&mutex);
-    for (int i = 0; i < JOINT_NUM2; i++) {
-      crslave.tau_p[i] =
-          J[SLAVE][i] / 2.0 *
-          (Kp[SLAVE][i] *
-               (crslave.goal_position[i] - crslave.present_position[i]) +
-           Kd[SLAVE][i] * (crslave.goal_velocity[i] - crslave.d_theta_res[i]));
-      //力制御によるトルク参照値
-      crslave.tau_f[i] =
-          Kf[SLAVE][i] / 2.0 * (-crslave.target_torque[i] - crslave.tau_res[i]);
-      if (i == 7) {
-        crslave.goal_torque[i] =
-            crslave.tau_p[i] + crslave.tau_f[i] + crslave.tau_dis[i];
-      } else {
-        crslave.goal_torque[i] =
-            crslave.tau_p[i] + crslave.tau_f[i] + crslave.tau_dis[i];
-      }
-      // DOB
-      crslave.dob0[i] =
-          crslave.goal_torque[i] + g[i] * J[SLAVE][i] * crslave.d_theta_res[i];
-      crslave.dob1[i] = g[i] * (crslave.dob0[i] - crslave.dob2[i]);
-      crslave.dob2[i] += crslave.dob1[i] * ts;
-      //外乱トルクの算出
-      crslave.tau_dis[i] =
-          crslave.dob2[i] - g[i] * J[SLAVE][i] * crslave.d_theta_res[i];
-    }
-    //トルク応答の算出
-    crslave.tau_res[0] =
-        crslave.tau_dis[0] - D[SLAVE][0] * crslave.d_theta_res[0];
-    crslave.tau_res[1] =
-        crslave.tau_dis[1] - M[SLAVE][0] * sin(crslave.present_position[1]) +
-        M[SLAVE][1] *
-            sin(crslave.present_position[1] + crslave.present_position[3]);
-    crslave.tau_res[2] =
-        crslave.tau_dis[2] - D[SLAVE][1] * crslave.d_theta_res[2];
-    crslave.tau_res[3] =
-        crslave.tau_dis[3] + M[SLAVE][2] * sin(crslave.present_position[1] +
-                                               crslave.present_position[3]);
-    crslave.tau_res[4] =
-        crslave.tau_dis[4] - D[SLAVE][2] * crslave.d_theta_res[4];
-    crslave.tau_res[5] =
-        crslave.tau_dis[5] - D[SLAVE][3] * crslave.d_theta_res[5];
-    crslave.tau_res[6] =
-        crslave.tau_dis[6] - D[SLAVE][4] * crslave.d_theta_res[6];
-    crslave.tau_res[7] =
-        crslave.tau_dis[7] - D[SLAVE][5] * crslave.d_theta_res[7];
+    // calculate input torque
+    crane_s.torque_control(crane_m.theta_res, crane_m.omega_res,
+                           crane_m.tau_res);
 
-    /*******************************************************
-     *    モーションデータをテキストに保存(Bモード)         *
-     ********************************************************/
-    // fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,", passtime,
-    //         crslave.present_position[0], crslave.present_position[1],
-    //         crslave.present_position[2], crslave.present_position[3],
-    //         crslave.present_position[4], crslave.present_position[5],
-    //         crslave.present_position[6], crslave.present_position[7]);
-    // fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,",
-    //         crslave.d_theta_res[0], crslave.d_theta_res[1],
-    //         crslave.d_theta_res[2], crslave.d_theta_res[3],
-    //         crslave.d_theta_res[4], crslave.d_theta_res[5],
-    //         crslave.d_theta_res[6], crslave.d_theta_res[7]);
-    // fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,", crslave.tau_res[0],
-    //         crslave.tau_res[1], crslave.tau_res[2], crslave.tau_res[3],
-    //         crslave.tau_res[4], crslave.tau_res[5], crslave.tau_res[6],
-    //         crslave.tau_res[7]);
-    // fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,",
-    //         crslave.goal_position[0], crslave.goal_position[1],
-    //         crslave.goal_position[2], crslave.goal_position[3],
-    //         crslave.goal_position[4], crslave.goal_position[5],
-    //         crslave.goal_position[6], crslave.goal_position[7]);
-    // fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,",
-    //         crslave.goal_velocity[0], crslave.goal_velocity[1],
-    //         crslave.goal_velocity[2], crslave.goal_velocity[3],
-    //         crslave.goal_velocity[4], crslave.goal_velocity[5],
-    //         crslave.goal_velocity[6], crslave.goal_velocity[7]);
-    // fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,",
-    //         crslave.target_torque[0], crslave.target_torque[1],
-    //         crslave.target_torque[2], crslave.target_torque[3],
-    //         crslave.target_torque[4], crslave.target_torque[5],
-    //         crslave.target_torque[6], crslave.target_torque[7]);
-    fprintf(crslave.ffp, "%lf,", passtime);
-    for(int i = 0; i < 8; i++)
-      fprintf(crslave.ffp, "%lf,", crslave.present_position[i]);
-    for(int i = 0; i < 8; i++)
-      fprintf(crslave.ffp, "%lf,", crslave.d_theta_res[i]);
-    for(int i = 0; i < 8; i++)
-      fprintf(crslave.ffp, "%lf,", crslave.tau_res[i]);
-    for(int i = 0; i < 8; i++)
-      fprintf(crslave.ffp, "%lf,", crslave.goal_position[i]);
-    for(int i = 0; i < 8; i++)
-      fprintf(crslave.ffp, "%lf,", crslave.goal_velocity[i]);
-    for(int i = 0; i < 8; i++)
-      fprintf(crslave.ffp, "%lf,", crslave.target_torque[i]);
-    for(int i = 0; i < 8; i++)
-      fprintf(crslave.ffp, "%lf,", crslave.goal_torque[i]);
-    for(int i = 0; i < 8; i++)
-      fprintf(crslave.ffp, "%lf,", crslave.tau_dis[i]);
-    for(int i = 0; i < 8; i++)
-      fprintf(crslave.ffp, "%lf,", crslave.dob0[i]);
-    for(int i = 0; i < 8; i++)
-      fprintf(crslave.ffp, "%lf,", crslave.dob1[i]);
-    for(int i = 0; i < 8; i++)
-      fprintf(crslave.ffp, "%lf,", crslave.dob2[i]);
+    // set torque
+    // crane_s.setCranex7Torque(crane_s.goal_torque, ID);
 
-    // トルクをセット
-    crslave.setCranex7Torque(crslave.goal_torque, ID);
+    if ((ttt % 10) == 0) printf("time: %lf\n", passtime);
 
-    if ((ttt % 10) == 0) {
-      printf("time: %lf\n", passtime);
-    }
     /**********************************************************
       処理時間とループ時間からスリープ時間を割り出す(Bモード)
     ***********************************************************/
@@ -706,25 +445,27 @@ void *slave_control(void *) {
     // スリープ時間 = ループ周期(2000[us]=2[ms]) - 制御時間 * 1,000,000.0
     sleep_time_s = LOOPTIME - (long)(control_time_s * 1000000.0);
 
-    if (sleep_time_s < 0) {
-      sleep_time_s = 0;
-    }
-    fprintf(crslave.ffp, "%ld,%lf\n", sleep_time_s, control_time_s);
+    if (sleep_time_s < 0) sleep_time_s = 0;
+
+    // fprintf(crane_s.ffp, "%ld,%lf\n", sleep_time_s, control_time_s);
+    crane_s.write_csv(passtime, sleep_time_s, control_time_s);
+
     usleep(sleep_time_s);
     // ts = 0.002 [sec] = 2[ms]
     passtime += ts;
     ttt++;
   }
-  crslave.Disable_Dynamixel_Torque(ID);
-  crslave.Setoperation(POSITION_CONTROL_MODE, ID);
-  crslave.Enable_Dynamixel_Torque(ID);
-  crslave.Move_Goal_Position(save_pose, ID, JOINT_MIN, JOINT_MAX);
+
+  crane_s.Disable_Dynamixel_Torque(ID);
+  crane_s.Setoperation(POSITION_CONTROL_MODE, ID);
+  crane_s.Enable_Dynamixel_Torque(ID);
+  crane_s.Move_Theta_Ref(save_pose, ID, JOINT_MIN, JOINT_MAX);
   sleep(5);
-  crslave.Move_Goal_Position(finish_pose, ID, JOINT_MIN, JOINT_MAX);
+  crane_s.Move_Theta_Ref(finish_pose, ID, JOINT_MIN, JOINT_MAX);
   sleep(5);
-  crslave.Disable_Dynamixel_Torque(ID);
-  crslave.Close_port();
-  fclose(crslave.ffp);
+  crane_s.Disable_Dynamixel_Torque(ID);
+  crane_s.Close_port();
+  fclose(crane_s.ffp);
   return NULL;
 }
 
@@ -734,89 +475,55 @@ void *master_control(void *) {
   struct timeval start_time_m;
   struct timeval end_time_m;
 
-  CR7 crmaster(devicename2, MASTER);
   // COMポートを開く
-  if (!crmaster.Open_port()) return NULL;
+  if (!crane_m.Open_port()) return NULL;
   //通信レートの設定
-  if (!crmaster.Set_port_baudrate()) {
+  if (!crane_m.Set_port_baudrate()) {
     //通信ポートを閉じる
-    crmaster.Close_port();
+    crane_m.Close_port();
     return NULL;
   }
-  crmaster.Setoperation(POSITION_CONTROL_MODE, ID);
+  crane_m.Setoperation(POSITION_CONTROL_MODE, ID);
   // 全サーボのトルクをON
-  crmaster.Enable_Dynamixel_Torque(ID);
+  crane_m.Enable_Dynamixel_Torque(ID);
   // 設定されているgoal positionに移動
-  crmaster.Move_Goal_Position(save_pose, ID, JOINT_MIN, JOINT_MAX);
+  crane_m.Move_Theta_Ref(save_pose, ID, JOINT_MIN, JOINT_MAX);
 
-  for (int i = 0; i < JOINT_NUM2; i++) {
-    crmaster.goal_position[i] = goal_pose[i];
-    crmaster.goal_velocity[i] = 0.0;
-    crmaster.target_torque[i] = 0.0;
-    p_th_m_res[i] = crmaster.present_position[i];
-    p_dth_m_res[i] = crmaster.d_theta_res[i];
-    p_tau_m_res[i] = crmaster.tau_res[i];
-  }
+  // for (int i = 0; i < JOINT_NUM2; i++) {
+  //   crane_m.theta_ref[i] = goal_pose[i];
+  //   crane_m.omega_ref[i] = 0.0;
+  //   crane_m.tau_ref[i] = 0.0;
+  //   // p_th_m_res[i] = crane_m.theta_res[i];
+  //   // p_dth_m_res[i] = crane_m.omega_res[i];
+  //   // p_tau_m_res[i] = crane_m.tau_res[i];
+  // }
   sleep(5);
-  crmaster.Move_Goal_Position(goal_pose, ID, JOINT_MIN, JOINT_MAX);
+  crane_m.Move_Theta_Ref(goal_pose, ID, JOINT_MIN, JOINT_MAX);
   sleep(5);
-  crmaster.Disable_Dynamixel_Torque(ID);
-  crmaster.Setoperation(CURRENT_CONTROL_MODE, ID);
-  crmaster.Enable_Dynamixel_Torque(ID);
+  crane_m.Disable_Dynamixel_Torque(ID);
+  crane_m.Setoperation(CURRENT_CONTROL_MODE, ID);
+  crane_m.Enable_Dynamixel_Torque(ID);
 
   printf("Press b  to start (or press q to quit)\n");
   printf("==========master_p_controlstart==========\n");
-  crmaster.ffp = fopen(crmaster.filename2.c_str(), "w");
-  fprintf(crmaster.ffp,
-          "time,m_presentposition[0],m_presentposition[1],m_presentposition[2],"
-          "m_presentposition[3],m_presentposition[4],m_presentposition[5],m_"
-          "presentposition[6],m_presentposition[7],");
-  fprintf(crmaster.ffp,
-          "m_presentvelocity[0],m_presentvelocity[1],m_presentvelocity[2],m_"
-          "presentvelocity[3],m_presentvelocity[4],m_presentvelocity[5],m_"
-          "presentvelocity[6],m_presentvelocity[7],");
-  fprintf(crmaster.ffp,
-          "m_tau_res[0],m_tau_res[1],m_tau_res[2],m_tau_res[3],m_tau_res[4],m_"
-          "tau_res[5],m_tau_res[6],m_tau_res[7],");
-  fprintf(crmaster.ffp,
-          "s_presentposition[0],s_presentposition[1],s_presentposition[2],s_"
-          "presentposition[3],s_presentposition[4],s_presentposition[5],s_"
-          "presentposition[6],s_presentposition[7],");
-  fprintf(crmaster.ffp,
-          "s_presentvelocity[0],s_presentvelocity[1],s_presentvelocity[2],s_"
-          "presentvelocity[3],s_presentvelocity[4],s_presentvelocity[5],s_"
-          "presentvelocity[6],s_presentvelocity[7],");
-  fprintf(crmaster.ffp,
-          "s_tau_res[0],s_tau_res[1],s_tau_res[2],s_tau_res[3],s_tau_res[4],s_"
-          "tau_res[5],s_tau_res[6],s_tau_res[7],");
-  for(int i = 0; i < 8; i++)
-    fprintf(crmaster.ffp, "%lf,", crmaster.tau_dis[i]);
-  for(int i = 0; i < 8; i++)
-    fprintf(crmaster.ffp, "%lf,", crmaster.dob0[i]);
-  for(int i = 0; i < 8; i++)
-    fprintf(crmaster.ffp, "%lf,", crmaster.dob1[i]);
-  for(int i = 0; i < 8; i++)
-    fprintf(crmaster.ffp, "%lf,", crmaster.dob2[i]);
-  fprintf(crmaster.ffp, "sleeptime,controltime\n");
 
-  crmaster.Readpresent_position(ID);
-  if ((crmaster.present_position[0] == 0.0) ||
-      (crmaster.present_position[7] == 0.0)) {
-    crmaster.Disable_Dynamixel_Torque(ID);
-    crmaster.Setoperation(POSITION_CONTROL_MODE, ID);
-    crmaster.Enable_Dynamixel_Torque(ID);
-    crmaster.Move_Goal_Position(save_pose, ID, JOINT_MIN, JOINT_MAX);
+  crane_m.Readtheta_res(ID);
+  if ((crane_m.theta_res[0] == 0.0) || (crane_m.theta_res[7] == 0.0)) {
+    crane_m.Disable_Dynamixel_Torque(ID);
+    crane_m.Setoperation(POSITION_CONTROL_MODE, ID);
+    crane_m.Enable_Dynamixel_Torque(ID);
+    crane_m.Move_Theta_Ref(save_pose, ID, JOINT_MIN, JOINT_MAX);
     printf("master読み込み怪しいので終了\n");
     sleep(5);
-    crmaster.Move_Goal_Position(finish_pose, ID, JOINT_MIN, JOINT_MAX);
+    crane_m.Move_Theta_Ref(finish_pose, ID, JOINT_MIN, JOINT_MAX);
     sleep(5);
-    crmaster.Disable_Dynamixel_Torque(ID);
-    crmaster.Close_port();
-    fclose(crmaster.ffp);
+    crane_m.Disable_Dynamixel_Torque(ID);
+    crane_m.Close_port();
+    fclose(crane_m.ffp);
     return NULL;
   }
   for (int j = 0; j < JOINT_NUM2; j++) {
-    crmaster.d_theta_temp[j] = crmaster.present_position[j];
+    crane_m.d_theta_temp[j] = crane_m.theta_res[j];
   }
   /*********************************************************
             P MODE
@@ -824,135 +531,65 @@ void *master_control(void *) {
   while (ch == 'p') {
     // カメラとの接続が怪しい場合は終了
     if ((connect_mode == -1) || (connect_mode == EINPROGRESS)) {
-      crmaster.Disable_Dynamixel_Torque(ID);
-      crmaster.Setoperation(POSITION_CONTROL_MODE, ID);
-      crmaster.Enable_Dynamixel_Torque(ID);
-      crmaster.Move_Goal_Position(save_pose, ID, JOINT_MIN, JOINT_MAX);
+      crane_m.Disable_Dynamixel_Torque(ID);
+      crane_m.Setoperation(POSITION_CONTROL_MODE, ID);
+      crane_m.Enable_Dynamixel_Torque(ID);
+      crane_m.Move_Theta_Ref(save_pose, ID, JOINT_MIN, JOINT_MAX);
       printf("ソケット読み込み怪しいので終了（M）\n");
       sleep(5);
-      crmaster.Move_Goal_Position(finish_pose, ID, JOINT_MIN, JOINT_MAX);
+      crane_m.Move_Theta_Ref(finish_pose, ID, JOINT_MIN, JOINT_MAX);
       sleep(5);
-      crmaster.Disable_Dynamixel_Torque(ID);
-      crmaster.Close_port();
-      fclose(crmaster.ffp);
+      crane_m.Disable_Dynamixel_Torque(ID);
+      crane_m.Close_port();
+      fclose(crane_m.ffp);
       return NULL;
     }
     gettimeofday(&start_time_m, NULL);
-    crmaster.Readpresent_position(ID);
-    if ((crmaster.present_position[0] == 0.0) ||
-        (crmaster.present_position[7] == 0.0)) {
-      crmaster.Disable_Dynamixel_Torque(ID);
-      crmaster.Setoperation(POSITION_CONTROL_MODE, ID);
-      crmaster.Enable_Dynamixel_Torque(ID);
-      crmaster.Move_Goal_Position(save_pose, ID, JOINT_MIN, JOINT_MAX);
+    crane_m.Readtheta_res(ID);
+    if ((crane_m.theta_res[0] == 0.0) || (crane_m.theta_res[7] == 0.0)) {
+      crane_m.Disable_Dynamixel_Torque(ID);
+      crane_m.Setoperation(POSITION_CONTROL_MODE, ID);
+      crane_m.Enable_Dynamixel_Torque(ID);
+      crane_m.Move_Theta_Ref(save_pose, ID, JOINT_MIN, JOINT_MAX);
       printf("master読み込み怪しいので終了\n");
       sleep(5);
-      crmaster.Move_Goal_Position(finish_pose, ID, JOINT_MIN, JOINT_MAX);
+      crane_m.Move_Theta_Ref(finish_pose, ID, JOINT_MIN, JOINT_MAX);
       sleep(5);
-      crmaster.Disable_Dynamixel_Torque(ID);
-      crmaster.Close_port();
-      fclose(crmaster.ffp);
+      crane_m.Disable_Dynamixel_Torque(ID);
+      crane_m.Close_port();
+      fclose(crane_m.ffp);
       return NULL;
     }
     /////ここから位置制御入れる
     for (int i = 0; i < JOINT_NUM2; i++) {
-      crmaster.d_theta_res[i] =
-          (crmaster.present_position[i] - crmaster.d_theta_temp[i]) * g[i];
-      crmaster.d_theta_temp[i] += crmaster.d_theta_res[i] * ts;
+      crane_m.omega_res[i] =
+          (crane_m.theta_res[i] - crane_m.d_theta_temp[i]) * g[i];
+      crane_m.d_theta_temp[i] += crane_m.omega_res[i] * ts;
     }
 
     for (int i = 0; i < JOINT_NUM2; i++) {
-      if (fabs(crmaster.d_theta_res[i]) >= LIMIT_SPEED[i]) {
-        crmaster.Disable_Dynamixel_Torque(ID);
-        crmaster.Setoperation(POSITION_CONTROL_MODE, ID);
-        crmaster.Enable_Dynamixel_Torque(ID);
-        crmaster.Move_Goal_Position(save_pose, ID, JOINT_MIN, JOINT_MAX);
+      if (fabs(crane_m.omega_res[i]) >= LIMIT_SPEED[i]) {
+        crane_m.Disable_Dynamixel_Torque(ID);
+        crane_m.Setoperation(POSITION_CONTROL_MODE, ID);
+        crane_m.Enable_Dynamixel_Torque(ID);
+        crane_m.Move_Theta_Ref(save_pose, ID, JOINT_MIN, JOINT_MAX);
         printf("masterの軸%dが速いので終了\n", i);
         sleep(5);
-        crmaster.Move_Goal_Position(finish_pose, ID, JOINT_MIN, JOINT_MAX);
+        crane_m.Move_Theta_Ref(finish_pose, ID, JOINT_MIN, JOINT_MAX);
         sleep(5);
-        crmaster.Disable_Dynamixel_Torque(ID);
-        crmaster.Close_port();
-        fclose(crmaster.ffp);
+        crane_m.Disable_Dynamixel_Torque(ID);
+        crane_m.Close_port();
+        fclose(crane_m.ffp);
         return NULL;
       }
     }
 
-    for (int i = 0; i < JOINT_NUM2; i++) {
-      crmaster.tau_p[i] =
-          J[MASTER][i] * (Kp[MASTER][i] * (crmaster.goal_position[i] -
-                                           crmaster.present_position[i]) +
-                          Kd[MASTER][i] * (crmaster.goal_velocity[i] -
-                                           crmaster.d_theta_res[i]));
-      //力制御によるトルク参照値
-      crmaster.tau_f[i] =
-          Kf[MASTER][i] * (-crmaster.target_torque[i] - crmaster.tau_res[i]);
-      if (i == 7) {
-        crmaster.goal_torque[i] =
-            crmaster.tau_p[i] + crmaster.tau_f[i] + crmaster.tau_dis[i];
-      } else {
-        crmaster.goal_torque[i] =
-            crmaster.tau_p[i] + crmaster.tau_f[i] + crmaster.tau_dis[i];
-      }
-      // DOB
-      crmaster.dob0[i] = crmaster.goal_torque[i] +
-                         g[i] * J[MASTER][i] * crmaster.d_theta_res[i];
-      crmaster.dob1[i] = g[i] * (crmaster.dob0[i] - crmaster.dob2[i]);
-      crmaster.dob2[i] += crmaster.dob1[i] * ts;
-      //外乱トルクの算出
-      crmaster.tau_dis[i] =
-          crmaster.dob2[i] - g[i] * J[MASTER][i] * crmaster.d_theta_res[i];
-    }
-    //トルク応答の算出
-    crmaster.tau_res[0] =
-        crmaster.tau_dis[0] - D[MASTER][0] * crmaster.d_theta_res[0];
-    crmaster.tau_res[1] =
-        crmaster.tau_dis[1] - M[MASTER][0] * sin(crmaster.present_position[1]) +
-        M[MASTER][1] *
-            sin(crmaster.present_position[1] + crmaster.present_position[3]);
-    crmaster.tau_res[2] =
-        crmaster.tau_dis[2] - D[MASTER][1] * crmaster.d_theta_res[2];
-    crmaster.tau_res[3] =
-        crmaster.tau_dis[3] + M[MASTER][2] * sin(crmaster.present_position[1] +
-                                                 crmaster.present_position[3]);
-    crmaster.tau_res[4] =
-        crmaster.tau_dis[4] - D[MASTER][2] * crmaster.d_theta_res[4];
-    crmaster.tau_res[5] =
-        crmaster.tau_dis[5] - D[MASTER][3] * crmaster.d_theta_res[5];
-    crmaster.tau_res[6] =
-        crmaster.tau_dis[6] - D[MASTER][4] * crmaster.d_theta_res[6];
-    crmaster.tau_res[7] =
-        crmaster.tau_dis[7] - D[MASTER][5] * crmaster.d_theta_res[7];
-    fprintf(crmaster.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,", passtime,
-            crmaster.present_position[0], crmaster.present_position[1],
-            crmaster.present_position[2], crmaster.present_position[3],
-            crmaster.present_position[4], crmaster.present_position[5],
-            crmaster.present_position[6], crmaster.present_position[7]);
-    fprintf(crmaster.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,",
-            crmaster.d_theta_res[0], crmaster.d_theta_res[1],
-            crmaster.d_theta_res[2], crmaster.d_theta_res[3],
-            crmaster.d_theta_res[4], crmaster.d_theta_res[5],
-            crmaster.d_theta_res[6], crmaster.d_theta_res[7]);
-    fprintf(crmaster.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,",
-            crmaster.tau_res[0], crmaster.tau_res[1], crmaster.tau_res[2],
-            crmaster.tau_res[3], crmaster.tau_res[4], crmaster.tau_res[5],
-            crmaster.tau_res[6], crmaster.tau_res[7]);
-    fprintf(crmaster.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,",
-            crmaster.goal_position[0], crmaster.goal_position[1],
-            crmaster.goal_position[2], crmaster.goal_position[3],
-            crmaster.goal_position[4], crmaster.goal_position[5],
-            crmaster.goal_position[6], crmaster.goal_position[7]);
-    fprintf(crmaster.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,",
-            crmaster.goal_velocity[0], crmaster.goal_velocity[1],
-            crmaster.goal_velocity[2], crmaster.goal_velocity[3],
-            crmaster.goal_velocity[4], crmaster.goal_velocity[5],
-            crmaster.goal_velocity[6], crmaster.goal_velocity[7]);
-    fprintf(crmaster.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,",
-            crmaster.target_torque[0], crmaster.target_torque[1],
-            crmaster.target_torque[2], crmaster.target_torque[3],
-            crmaster.target_torque[4], crmaster.target_torque[5],
-            crmaster.target_torque[6], crmaster.target_torque[7]);
-    crmaster.setCranex7Torque(crmaster.goal_torque, ID);
+    // calculate input torque
+    crane_m.position_control(goal_pose);
+
+    // set torque
+    // crane_m.setCranex7Torque(crane_m.goal_torque, ID);
+
     /**********************************************************
       処理時間とループ時間からスリープ時間を割り出す(Pモード)
     ***********************************************************/
@@ -961,26 +598,26 @@ void *master_control(void *) {
                       (end_time_m.tv_usec - start_time_m.tv_usec) * 0.000001);
     sleep_time_m = LOOPTIME - (long)(control_time_m * 1000000.0);
 
-    if (sleep_time_m < 0) {
-      sleep_time_m = 0;
-    }
+    if (sleep_time_m < 0) sleep_time_m = 0;
 
-    fprintf(crmaster.ffp, "%ld,%lf\n", sleep_time_m, control_time_m);
+    // fprintf(crane_m.ffp, "%ld,%lf\n", sleep_time_m, control_time_m);
+    crane_m.write_csv(passtime, sleep_time_m, control_time_m);
+
     usleep(sleep_time_m);
   }
 
   if (ch != 'b') {
-    crmaster.Disable_Dynamixel_Torque(ID);
-    crmaster.Setoperation(POSITION_CONTROL_MODE, ID);
-    crmaster.Enable_Dynamixel_Torque(ID);
-    crmaster.Move_Goal_Position(save_pose, ID, JOINT_MIN, JOINT_MAX);
+    crane_m.Disable_Dynamixel_Torque(ID);
+    crane_m.Setoperation(POSITION_CONTROL_MODE, ID);
+    crane_m.Enable_Dynamixel_Torque(ID);
+    crane_m.Move_Theta_Ref(save_pose, ID, JOINT_MIN, JOINT_MAX);
     sleep(5);
     printf("master_バイラテ前にqで終了\n");
-    crmaster.Move_Goal_Position(finish_pose, ID, JOINT_MIN, JOINT_MAX);
+    crane_m.Move_Theta_Ref(finish_pose, ID, JOINT_MIN, JOINT_MAX);
     sleep(5);
-    crmaster.Disable_Dynamixel_Torque(ID);
-    crmaster.Close_port();
-    fclose(crmaster.ffp);
+    crane_m.Disable_Dynamixel_Torque(ID);
+    crane_m.Close_port();
+    fclose(crane_m.ffp);
     return NULL;
   }
 
@@ -990,158 +627,87 @@ void *master_control(void *) {
   printf("=================master_b_controlstart==================\n");
   while (ch == 'b') {
     gettimeofday(&start_time_m, NULL);
-    crmaster.datareadflag = 0;
+    crane_m.datareadflag = 0;
     for (int i = 0; i < JOINT_NUM2; i++) {
-      crmaster.dxl_addparam_result = crmaster.groupBulkRead->addParam(
-          ID[i], PRESENT_POSITION_ADDRESS,
-          PRESENT_POSITION_DATA_LENGTH);  //読み込みのデータを設定(現在角度)
+      crane_m.dxl_addparam_result = crane_m.groupBulkRead->addParam(
+          ID[i], THETA_RES_ADDRESS,
+          THETA_RES_DATA_LENGTH);  //読み込みのデータを設定(現在角度)
     }
 
     // Bulkread present position
-    crmaster.dxl_comm_result =
-        crmaster.groupBulkRead->txRxPacket();  //返信データの読み込み
-    if (crmaster.dxl_comm_result != COMM_SUCCESS) printf(" discommect \n");
+    crane_m.dxl_comm_result =
+        crane_m.groupBulkRead->txRxPacket();  //返信データの読み込み
+    if (crane_m.dxl_comm_result != COMM_SUCCESS) printf(" discommect \n");
     // Check if groupbulkread data of Dynamixel is available
     for (int i = 0; i < JOINT_NUM2; i++) {  //返信データが利用できるか確認
-      crmaster.dxl_getdata_result = crmaster.groupBulkRead->isAvailable(
-          ID[i], PRESENT_POSITION_ADDRESS, PRESENT_POSITION_DATA_LENGTH);
-      if (crmaster.dxl_getdata_result != true) {
-        crmaster.datareadflag++;
+      crane_m.dxl_getdata_result = crane_m.groupBulkRead->isAvailable(
+          ID[i], THETA_RES_ADDRESS, THETA_RES_DATA_LENGTH);
+      if (crane_m.dxl_getdata_result != true) {
+        crane_m.datareadflag++;
       }
     }
-    if (crmaster.datareadflag == 0) {
+    if (crane_m.datareadflag == 0) {
       for (int i = 0; i < JOINT_NUM2; i++) {
-        crmaster.dxl_present_position = crmaster.groupBulkRead->getData(
-            ID[i], PRESENT_POSITION_ADDRESS,
-            PRESENT_POSITION_DATA_LENGTH);  //返信データから指定のデータを読む
-        crmaster.present_position[i] =
-            dxlvalue2rad(crmaster.dxl_present_position);
+        crane_m.dxl_theta_res = crane_m.groupBulkRead->getData(
+            ID[i], THETA_RES_ADDRESS,
+            THETA_RES_DATA_LENGTH);  //返信データから指定のデータを読む
+        crane_m.theta_res[i] = dxlvalue2rad(crane_m.dxl_theta_res);
       }
     }
 
     for (int i = 0; i < JOINT_NUM2; i++) {
-      crmaster.d_theta_res[i] =
-          (crmaster.present_position[i] - crmaster.d_theta_temp[i]) * g[i];
-      crmaster.d_theta_temp[i] += crmaster.d_theta_res[i] * ts;
+      crane_m.omega_res[i] =
+          (crane_m.theta_res[i] - crane_m.d_theta_temp[i]) * g[i];
+      crane_m.d_theta_temp[i] += crane_m.omega_res[i] * ts;
     }
 
     for (int i = 0; i < JOINT_NUM2; i++) {
-      if (fabs(crmaster.d_theta_res[i]) >= LIMIT_SPEED[i]) {
-        crmaster.Disable_Dynamixel_Torque(ID);
-        crmaster.Setoperation(POSITION_CONTROL_MODE, ID);
-        crmaster.Enable_Dynamixel_Torque(ID);
-        crmaster.Move_Goal_Position(save_pose, ID, JOINT_MIN, JOINT_MAX);
+      if (fabs(crane_m.omega_res[i]) >= LIMIT_SPEED[i]) {
+        crane_m.Disable_Dynamixel_Torque(ID);
+        crane_m.Setoperation(POSITION_CONTROL_MODE, ID);
+        crane_m.Enable_Dynamixel_Torque(ID);
+        crane_m.Move_Theta_Ref(save_pose, ID, JOINT_MIN, JOINT_MAX);
         printf("masterの軸%dが速いので終了\n", i);
         sleep(5);
-        crmaster.Move_Goal_Position(finish_pose, ID, JOINT_MIN, JOINT_MAX);
+        crane_m.Move_Theta_Ref(finish_pose, ID, JOINT_MIN, JOINT_MAX);
         sleep(5);
-        crmaster.Disable_Dynamixel_Torque(ID);
-        crmaster.Close_port();
-        fclose(crmaster.ffp);
+        crane_m.Disable_Dynamixel_Torque(ID);
+        crane_m.Close_port();
+        fclose(crane_m.ffp);
         return NULL;
       }
     }
 
-    pthread_mutex_lock(&mutex);
-    for (int i = 0; i < JOINT_NUM2; i++) {
-      if (i == 2) {
-        p_th_m_res[i] = crmaster.present_position[i];
-        p_dth_m_res[i] = crmaster.d_theta_res[i];
-        p_tau_m_res[i] = crmaster.tau_res[i];
-        crmaster.goal_position[i] = 3.14;
-        crmaster.goal_velocity[i] = 0.0;
-        crmaster.target_torque[i] = 0.0;
-      } else {
-        p_th_m_res[i] = crmaster.present_position[i];
-        p_dth_m_res[i] = crmaster.d_theta_res[i];
-        p_tau_m_res[i] = crmaster.tau_res[i];
-        crmaster.goal_position[i] = p_th_s_res[i];
-        crmaster.goal_velocity[i] = p_dth_s_res[i];
-        crmaster.target_torque[i] = p_tau_s_res[i];
-      }
-    }
-    pthread_mutex_unlock(&mutex);
+    // pthread_mutex_lock(&mutex);
+    // for (int i = 0; i < JOINT_NUM2; i++) {
+    //   if (i == 2) {
+    //     p_th_m_res[i] = crane_m.theta_res[i];
+    //     p_dth_m_res[i] = crane_m.omega_res[i];
+    //     p_tau_m_res[i] = crane_m.tau_res[i];
+    //     crane_m.theta_ref[i] = 3.14;
+    //     crane_m.omega_ref[i] = 0.0;
+    //     crane_m.tau_ref[i] = 0.0;
+    //   } else {
+    //     p_th_m_res[i] = crane_m.theta_res[i];
+    //     p_dth_m_res[i] = crane_m.omega_res[i];
+    //     p_tau_m_res[i] = crane_m.tau_res[i];
+    //     crane_m.theta_ref[i] = p_th_s_res[i];
+    //     crane_m.omega_ref[i] = p_dth_s_res[i];
+    //     crane_m.tau_ref[i] = p_tau_s_res[i];
+    //   }
+    // }
+    // pthread_mutex_unlock(&mutex);
 
-    for (int i = 0; i < JOINT_NUM2; i++) {
-      crmaster.tau_p[i] =
-          J[MASTER][i] / 2.0 *
-          (Kp[MASTER][i] *
-               (crmaster.goal_position[i] - crmaster.present_position[i]) +
-           Kd[MASTER][i] *
-               (crmaster.goal_velocity[i] - crmaster.d_theta_res[i]));
-      //力制御によるトルク参照値
-      crmaster.tau_f[i] = Kf[MASTER][i] / 2.0 *
-                          (-crmaster.target_torque[i] - crmaster.tau_res[i]);
-      if (i == 7) {
-        crmaster.goal_torque[i] =
-            crmaster.tau_p[i] + crmaster.tau_f[i] + crmaster.tau_dis[i];
-      } else {
-        crmaster.goal_torque[i] =
-            crmaster.tau_p[i] + crmaster.tau_f[i] + crmaster.tau_dis[i];
-      }
-      // DOB
-      crmaster.dob0[i] = crmaster.goal_torque[i] +
-                         g[i] * J[MASTER][i] * crmaster.d_theta_res[i];
-      crmaster.dob1[i] = g[i] * (crmaster.dob0[i] - crmaster.dob2[i]);
-      crmaster.dob2[i] += crmaster.dob1[i] * ts;
-      //外乱トルクの算出
-      crmaster.tau_dis[i] =
-          crmaster.dob2[i] - g[i] * J[MASTER][i] * crmaster.d_theta_res[i];
-    }
+    // calculate input torque
+    crane_m.torque_control(crane_m.theta_res, crane_m.omega_res,
+                           crane_m.tau_res);
 
-    crmaster.tau_res[0] =
-        crmaster.tau_dis[0] - D[MASTER][0] * crmaster.d_theta_res[0];
-    crmaster.tau_res[1] =
-        crmaster.tau_dis[1] - M[MASTER][0] * sin(crmaster.present_position[1]) +
-        M[MASTER][1] *
-            sin(crmaster.present_position[1] + crmaster.present_position[3]);
-    crmaster.tau_res[2] =
-        crmaster.tau_dis[2] - D[MASTER][1] * crmaster.d_theta_res[2];
-    crmaster.tau_res[3] =
-        crmaster.tau_dis[3] + M[MASTER][2] * sin(crmaster.present_position[1] +
-                                                 crmaster.present_position[3]);
-    crmaster.tau_res[4] =
-        crmaster.tau_dis[4] - D[MASTER][2] * crmaster.d_theta_res[4];
-    crmaster.tau_res[5] =
-        crmaster.tau_dis[5] - D[MASTER][3] * crmaster.d_theta_res[5];
-    crmaster.tau_res[6] =
-        crmaster.tau_dis[6] - D[MASTER][4] * crmaster.d_theta_res[6];
-    crmaster.tau_res[7] =
-        crmaster.tau_dis[7] - D[MASTER][5] * crmaster.d_theta_res[7];
+    // set torque
+    // crane_m.setCranex7Torque(crane_m.goal_torque, ID);
 
-    fprintf(crmaster.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,", passtime,
-            crmaster.present_position[0], crmaster.present_position[1],
-            crmaster.present_position[2], crmaster.present_position[3],
-            crmaster.present_position[4], crmaster.present_position[5],
-            crmaster.present_position[6], crmaster.present_position[7]);
-    fprintf(crmaster.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,",
-            crmaster.d_theta_res[0], crmaster.d_theta_res[1],
-            crmaster.d_theta_res[2], crmaster.d_theta_res[3],
-            crmaster.d_theta_res[4], crmaster.d_theta_res[5],
-            crmaster.d_theta_res[6], crmaster.d_theta_res[7]);
-    fprintf(crmaster.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,",
-            crmaster.tau_res[0], crmaster.tau_res[1], crmaster.tau_res[2],
-            crmaster.tau_res[3], crmaster.tau_res[4], crmaster.tau_res[5],
-            crmaster.tau_res[6], crmaster.tau_res[7]);
-    fprintf(crmaster.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,",
-            crmaster.goal_position[0], crmaster.goal_position[1],
-            crmaster.goal_position[2], crmaster.goal_position[3],
-            crmaster.goal_position[4], crmaster.goal_position[5],
-            crmaster.goal_position[6], crmaster.goal_position[7]);
-    fprintf(crmaster.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,",
-            crmaster.goal_velocity[0], crmaster.goal_velocity[1],
-            crmaster.goal_velocity[2], crmaster.goal_velocity[3],
-            crmaster.goal_velocity[4], crmaster.goal_velocity[5],
-            crmaster.goal_velocity[6], crmaster.goal_velocity[7]);
-    fprintf(crmaster.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,",
-            crmaster.target_torque[0], crmaster.target_torque[1],
-            crmaster.target_torque[2], crmaster.target_torque[3],
-            crmaster.target_torque[4], crmaster.target_torque[5],
-            crmaster.target_torque[6], crmaster.target_torque[7]);
-    crmaster.setCranex7Torque(crmaster.goal_torque, ID);
     /**********************************************************
- 処理時間とループ時間からスリープ時間を割り出す(Bモード)
-***********************************************************/
+      処理時間とループ時間からスリープ時間を割り出す(Bモード)
+    ***********************************************************/
     gettimeofday(&end_time_m, NULL);
     control_time_m = (end_time_m.tv_sec - start_time_m.tv_sec +
                       (end_time_m.tv_usec - start_time_m.tv_usec) * 0.000001);
@@ -1149,20 +715,23 @@ void *master_control(void *) {
     if (sleep_time_m < 0) {
       sleep_time_m = 0;
     }
-    fprintf(crmaster.ffp, "%ld,%lf\n", sleep_time_m, control_time_m);
+
+    // fprintf(crane_m.ffp, "%ld,%lf\n", sleep_time_m, control_time_m);
+    crane_m.write_csv(passtime, sleep_time_m, control_time_m);
+
     usleep(sleep_time_m);
   }
 
-  crmaster.Disable_Dynamixel_Torque(ID);
-  crmaster.Setoperation(POSITION_CONTROL_MODE, ID);
-  crmaster.Enable_Dynamixel_Torque(ID);
-  crmaster.Move_Goal_Position(save_pose, ID, JOINT_MIN, JOINT_MAX);
+  crane_m.Disable_Dynamixel_Torque(ID);
+  crane_m.Setoperation(POSITION_CONTROL_MODE, ID);
+  crane_m.Enable_Dynamixel_Torque(ID);
+  crane_m.Move_Theta_Ref(save_pose, ID, JOINT_MIN, JOINT_MAX);
   sleep(5);
-  crmaster.Move_Goal_Position(finish_pose, ID, JOINT_MIN, JOINT_MAX);
+  crane_m.Move_Theta_Ref(finish_pose, ID, JOINT_MIN, JOINT_MAX);
   sleep(5);
-  crmaster.Disable_Dynamixel_Torque(ID);
-  crmaster.Close_port();
-  fclose(crmaster.ffp);
+  crane_m.Disable_Dynamixel_Torque(ID);
+  crane_m.Close_port();
+  fclose(crane_m.ffp);
   return NULL;
 }
 
@@ -1181,8 +750,8 @@ void *keyboard_check(void *) {
       // pからbに移行した時だけカメラカウントをリセット
       if (pre_ch == 'p') {
         printf("MODE B ACTIVE\n");
-        t_camera = 0;
-        camera_active_flag = true;
+        // t_camera = 0;
+        // camera_active_flag = true;
       }
     }
     /************************
@@ -1204,24 +773,24 @@ void *keyboard_check(void *) {
  * @brief	main
  */
 int main() {
-  pthread_t master_thread, slave_thread, getch_thread;
-  for (int i = 0; i < JOINT_NUM; i++) {
-    p_th_m_res[i] = 0.0;
-    p_dth_m_res[i] = 0.0;
-    p_ddth_m_res[i] = 0.0;
-    p_th_s_res[i] = 0.0;
-    p_dth_s_res[i] = 0.0;
-    p_ddth_s_res[i] = 0.0;
-    p_tau_m_res[i] = 0.0;
-    p_tau_s_res[i] = 0.0;
-  }
+  pthread_t master_thread, crane_s_thread, getch_thread;
+  // for (int i = 0; i < JOINT_NUM; i++) {
+  //   p_th_m_res[i] = 0.0;
+  //   p_dth_m_res[i] = 0.0;
+  //   p_ddth_m_res[i] = 0.0;
+  //   p_th_s_res[i] = 0.0;
+  //   p_dth_s_res[i] = 0.0;
+  //   p_ddth_s_res[i] = 0.0;
+  //   p_tau_m_res[i] = 0.0;
+  //   p_tau_s_res[i] = 0.0;
+  // }
   // マスター制御のスレッド設定
   if (pthread_create(&master_thread, NULL, &master_control, NULL) != 0) {
     fprintf(stderr, "cannot create control thread\n");
     return 1;
   }
   // スレーブ制御のスレッド設定
-  if (pthread_create(&slave_thread, NULL, &slave_control, NULL) != 0) {
+  if (pthread_create(&crane_s_thread, NULL, &crane_s_control, NULL) != 0) {
     fprintf(stderr, "cannot create control thread\n");
     return 1;
   }
@@ -1238,7 +807,7 @@ int main() {
   }*/
   // スレッド開始
   pthread_join(master_thread, NULL);
-  pthread_join(slave_thread, NULL);
+  pthread_join(crane_s_thread, NULL);
   pthread_join(getch_thread, NULL);
   // pthread_join(camera_thread, NULL);
   return 0;

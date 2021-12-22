@@ -85,15 +85,15 @@ void *slave_control(void *) {
 
   crslave.Setoperation(POSITION_CONTROL_MODE, ID);
   crslave.Enable_Dynamixel_Torque(ID);
-  crslave.Move_Goal_Position(save_pose, ID, JOINT_MIN, JOINT_MAX);
+  crslave.Move_Theta_Ref(save_pose, ID, JOINT_MIN, JOINT_MAX);
 
   for (int i = 0; i < JOINT_NUM2; i++) {
-    crslave.goal_position[i] = goal_pose[i];
-    crslave.goal_velocity[i] = 0.0;
-    crslave.target_torque[i] = 0.0;
-    p_th_s_res[i] = crslave.present_position[i];
+    crslave.theta_ref[i] = goal_pose[i];
+    crslave.omega_ref[i] = 0.0;
+    crslave.tau_ref[i] = 0.0;
+    p_th_s_res[i] = crslave.theta_res[i];
     ;
-    p_dth_s_res[i] = crslave.d_theta_res[i];
+    p_dth_s_res[i] = crslave.omega_res[i];
     p_tau_s_res[i] = crslave.tau_res[i];
   }
 
@@ -101,7 +101,7 @@ void *slave_control(void *) {
   sleep(5);
   cout << "slave_JOINT_NUM : " << JOINT_NUM << endl;
   cout << "slave_JOINT_NUM2 : " << JOINT_NUM2 << endl;
-  crslave.Move_Goal_Position(goal_pose, ID, JOINT_MIN, JOINT_MAX);
+  crslave.Move_Theta_Ref(goal_pose, ID, JOINT_MIN, JOINT_MAX);
   sleep(5);
   // cout << "kokoato" << endl;
   crslave.Disable_Dynamixel_Torque(ID);
@@ -138,16 +138,16 @@ void *slave_control(void *) {
   fprintf(crslave.ffp, "a[14],a[15],a[16],a[17],a[18],a[19],a[20],");
   fprintf(crslave.ffp, "sleeptime,controltime\n");
 
-  crslave.Readpresent_position(ID);
-  if ((crslave.present_position[0] == 0.0) ||
-      (crslave.present_position[7] == 0.0)) {
+  crslave.Readtheta_res(ID);
+  if ((crslave.theta_res[0] == 0.0) ||
+      (crslave.theta_res[7] == 0.0)) {
     crslave.Disable_Dynamixel_Torque(ID);
     crslave.Setoperation(POSITION_CONTROL_MODE, ID);
     crslave.Enable_Dynamixel_Torque(ID);
-    crslave.Move_Goal_Position(save_pose, ID, JOINT_MIN, JOINT_MAX);
+    crslave.Move_Theta_Ref(save_pose, ID, JOINT_MIN, JOINT_MAX);
     sleep(5);
     printf("slave読み込み怪しいので終了\n");
-    crslave.Move_Goal_Position(finish_pose, ID, JOINT_MIN, JOINT_MAX);
+    crslave.Move_Theta_Ref(finish_pose, ID, JOINT_MIN, JOINT_MAX);
     sleep(5);
     dprintf(sock, "%s", "**");
     close(sock);
@@ -157,21 +157,21 @@ void *slave_control(void *) {
     return NULL;
   }
   for (int j = 0; j < JOINT_NUM2; j++) {
-    crslave.d_theta_temp[j] = crslave.present_position[j];
+    crslave.d_theta_temp[j] = crslave.theta_res[j];
   }
   while (ch == 'p') {
     gettimeofday(&start_time_s, NULL);
 
-    crslave.Readpresent_position(ID);
-    if ((crslave.present_position[0] == 0.0) ||
-        (crslave.present_position[7] == 0.0)) {
+    crslave.Readtheta_res(ID);
+    if ((crslave.theta_res[0] == 0.0) ||
+        (crslave.theta_res[7] == 0.0)) {
       crslave.Disable_Dynamixel_Torque(ID);
       crslave.Setoperation(POSITION_CONTROL_MODE, ID);
       crslave.Enable_Dynamixel_Torque(ID);
-      crslave.Move_Goal_Position(save_pose, ID, JOINT_MIN, JOINT_MAX);
+      crslave.Move_Theta_Ref(save_pose, ID, JOINT_MIN, JOINT_MAX);
       sleep(5);
       printf("slave読み込み怪しいので終了\n");
-      crslave.Move_Goal_Position(finish_pose, ID, JOINT_MIN, JOINT_MAX);
+      crslave.Move_Theta_Ref(finish_pose, ID, JOINT_MIN, JOINT_MAX);
       sleep(5);
       dprintf(sock, "%s", "**");
       close(sock);
@@ -182,20 +182,20 @@ void *slave_control(void *) {
     }
 
     for (int i = 0; i < JOINT_NUM2; i++) {
-      crslave.d_theta_res[i] =
-          (crslave.present_position[i] - crslave.d_theta_temp[i]) * g[i];
-      crslave.d_theta_temp[i] += crslave.d_theta_res[i] * ts;
+      crslave.omega_res[i] =
+          (crslave.theta_res[i] - crslave.d_theta_temp[i]) * g[i];
+      crslave.d_theta_temp[i] += crslave.omega_res[i] * ts;
     }
 
     for (int i = 0; i < JOINT_NUM2; i++) {
-      if (fabs(crslave.d_theta_res[i]) >= LIMIT_SPEED[i]) {
+      if (fabs(crslave.omega_res[i]) >= LIMIT_SPEED[i]) {
         crslave.Disable_Dynamixel_Torque(ID);
         crslave.Setoperation(POSITION_CONTROL_MODE, ID);
         crslave.Enable_Dynamixel_Torque(ID);
-        crslave.Move_Goal_Position(save_pose, ID, JOINT_MIN, JOINT_MAX);
+        crslave.Move_Theta_Ref(save_pose, ID, JOINT_MIN, JOINT_MAX);
         sleep(5);
         printf("crslaveの軸%dが速いので終了\n", i);
-        crslave.Move_Goal_Position(finish_pose, ID, JOINT_MIN, JOINT_MAX);
+        crslave.Move_Theta_Ref(finish_pose, ID, JOINT_MIN, JOINT_MAX);
         sleep(5);
         dprintf(sock, "%s", "**");
         close(sock);
@@ -210,11 +210,11 @@ void *slave_control(void *) {
       crslave.tau_p[i] =
           J[SLAVE][i] *
           (Kp[SLAVE][i] *
-               (crslave.goal_position[i] - crslave.present_position[i]) +
-           Kd[SLAVE][i] * (crslave.goal_velocity[i] - crslave.d_theta_res[i]));
+               (crslave.theta_ref[i] - crslave.theta_res[i]) +
+           Kd[SLAVE][i] * (crslave.omega_ref[i] - crslave.omega_res[i]));
       //力制御によるトルク参照値
       crslave.tau_f[i] =
-          Kf[SLAVE][i] * (-crslave.target_torque[i] - crslave.tau_res[i]);
+          Kf[SLAVE][i] * (-crslave.tau_ref[i] - crslave.tau_res[i]);
       if (i == 2) {
         crslave.goal_torque[i] =
             crslave.tau_p[i] + crslave.tau_f[i] + crslave.tau_dis[i];
@@ -225,64 +225,64 @@ void *slave_control(void *) {
 
       // DOB
       crslave.dob0[i] =
-          crslave.goal_torque[i] + g[i] * J[SLAVE][i] * crslave.d_theta_res[i];
+          crslave.goal_torque[i] + g[i] * J[SLAVE][i] * crslave.omega_res[i];
       crslave.dob1[i] = g[i] * (crslave.dob0[i] - crslave.dob2[i]);
       crslave.dob2[i] += crslave.dob1[i] * ts;
 
       //外乱トルクの算出
       crslave.tau_dis[i] =
-          crslave.dob2[i] - g[i] * J[SLAVE][i] * crslave.d_theta_res[i];
+          crslave.dob2[i] - g[i] * J[SLAVE][i] * crslave.omega_res[i];
     }
 
     crslave.tau_res[0] =
-        crslave.tau_dis[0] - D[SLAVE][0] * crslave.d_theta_res[0];
+        crslave.tau_dis[0] - D[SLAVE][0] * crslave.omega_res[0];
     crslave.tau_res[1] =
-        crslave.tau_dis[1] - M[SLAVE][0] * sin(crslave.present_position[1]) +
+        crslave.tau_dis[1] - M[SLAVE][0] * sin(crslave.theta_res[1]) +
         M[SLAVE][1] *
-            sin(crslave.present_position[1] + crslave.present_position[3]);
+            sin(crslave.theta_res[1] + crslave.theta_res[3]);
     crslave.tau_res[2] =
-        crslave.tau_dis[2] - D[SLAVE][1] * crslave.d_theta_res[2];
+        crslave.tau_dis[2] - D[SLAVE][1] * crslave.omega_res[2];
     crslave.tau_res[3] =
-        crslave.tau_dis[3] + M[SLAVE][2] * sin(crslave.present_position[1] +
-                                               crslave.present_position[3]);
+        crslave.tau_dis[3] + M[SLAVE][2] * sin(crslave.theta_res[1] +
+                                               crslave.theta_res[3]);
     crslave.tau_res[4] =
-        crslave.tau_dis[4] - D[SLAVE][2] * crslave.d_theta_res[4];
+        crslave.tau_dis[4] - D[SLAVE][2] * crslave.omega_res[4];
     crslave.tau_res[5] =
-        crslave.tau_dis[5] - D[SLAVE][3] * crslave.d_theta_res[5];
+        crslave.tau_dis[5] - D[SLAVE][3] * crslave.omega_res[5];
     crslave.tau_res[6] =
-        crslave.tau_dis[6] - D[SLAVE][4] * crslave.d_theta_res[6];
+        crslave.tau_dis[6] - D[SLAVE][4] * crslave.omega_res[6];
     crslave.tau_res[7] =
-        crslave.tau_dis[7] - D[SLAVE][5] * crslave.d_theta_res[7];
+        crslave.tau_dis[7] - D[SLAVE][5] * crslave.omega_res[7];
 
     fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,", passtime,
-            crslave.present_position[0], crslave.present_position[1],
-            crslave.present_position[2], crslave.present_position[3],
-            crslave.present_position[4], crslave.present_position[5],
-            crslave.present_position[6], crslave.present_position[7]);
+            crslave.theta_res[0], crslave.theta_res[1],
+            crslave.theta_res[2], crslave.theta_res[3],
+            crslave.theta_res[4], crslave.theta_res[5],
+            crslave.theta_res[6], crslave.theta_res[7]);
     fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,",
-            crslave.d_theta_res[0], crslave.d_theta_res[1],
-            crslave.d_theta_res[2], crslave.d_theta_res[3],
-            crslave.d_theta_res[4], crslave.d_theta_res[5],
-            crslave.d_theta_res[6], crslave.d_theta_res[7]);
+            crslave.omega_res[0], crslave.omega_res[1],
+            crslave.omega_res[2], crslave.omega_res[3],
+            crslave.omega_res[4], crslave.omega_res[5],
+            crslave.omega_res[6], crslave.omega_res[7]);
     fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,", crslave.tau_res[0],
             crslave.tau_res[1], crslave.tau_res[2], crslave.tau_res[3],
             crslave.tau_res[4], crslave.tau_res[5], crslave.tau_res[6],
             crslave.tau_res[7]);
     fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,",
-            crslave.goal_position[0], crslave.goal_position[1],
-            crslave.goal_position[2], crslave.goal_position[3],
-            crslave.goal_position[4], crslave.goal_position[5],
-            crslave.goal_position[6], crslave.goal_position[7]);
+            crslave.theta_ref[0], crslave.theta_ref[1],
+            crslave.theta_ref[2], crslave.theta_ref[3],
+            crslave.theta_ref[4], crslave.theta_ref[5],
+            crslave.theta_ref[6], crslave.theta_ref[7]);
     fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,",
-            crslave.goal_velocity[0], crslave.goal_velocity[1],
-            crslave.goal_velocity[2], crslave.goal_velocity[3],
-            crslave.goal_velocity[4], crslave.goal_velocity[5],
-            crslave.goal_velocity[6], crslave.goal_velocity[7]);
+            crslave.omega_ref[0], crslave.omega_ref[1],
+            crslave.omega_ref[2], crslave.omega_ref[3],
+            crslave.omega_ref[4], crslave.omega_ref[5],
+            crslave.omega_ref[6], crslave.omega_ref[7]);
     fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,",
-            crslave.target_torque[0], crslave.target_torque[1],
-            crslave.target_torque[2], crslave.target_torque[3],
-            crslave.target_torque[4], crslave.target_torque[5],
-            crslave.target_torque[6], crslave.target_torque[7]);
+            crslave.tau_ref[0], crslave.tau_ref[1],
+            crslave.tau_ref[2], crslave.tau_ref[3],
+            crslave.tau_ref[4], crslave.tau_ref[5],
+            crslave.tau_ref[6], crslave.tau_ref[7]);
     fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,", a[0], a[1], a[2], a[3],
             a[4], a[5], a[6]);
     fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,", a[7], a[8], a[9],
@@ -312,9 +312,9 @@ void *slave_control(void *) {
     crslave.Disable_Dynamixel_Torque(ID);
     crslave.Setoperation(POSITION_CONTROL_MODE, ID);
     crslave.Enable_Dynamixel_Torque(ID);
-    crslave.Move_Goal_Position(save_pose, ID, JOINT_MIN, JOINT_MAX);
+    crslave.Move_Theta_Ref(save_pose, ID, JOINT_MIN, JOINT_MAX);
     sleep(5);
-    crslave.Move_Goal_Position(finish_pose, ID, JOINT_MIN, JOINT_MAX);
+    crslave.Move_Theta_Ref(finish_pose, ID, JOINT_MIN, JOINT_MAX);
     sleep(5);
     dprintf(sock, "%s", "**");
     close(sock);
@@ -334,8 +334,8 @@ void *slave_control(void *) {
 
     for (int i = 0; i < JOINT_NUM2; i++) {
       crslave.dxl_addparam_result = crslave.groupBulkRead->addParam(
-          ID[i], PRESENT_POSITION_ADDRESS,
-          PRESENT_POSITION_DATA_LENGTH);  //読み込みのデータを設定(現在角度)
+          ID[i], THETA_RES_ADDRESS,
+          THETA_RES_DATA_LENGTH);  //読み込みのデータを設定(現在角度)
     }
 
     // Bulkread present position
@@ -345,36 +345,36 @@ void *slave_control(void *) {
     // Check if groupbulkread data of Dynamixel is available
     for (int i = 0; i < JOINT_NUM2; i++) {  //返信データが利用できるか確認
       crslave.dxl_getdata_result = crslave.groupBulkRead->isAvailable(
-          ID[i], PRESENT_POSITION_ADDRESS, PRESENT_POSITION_DATA_LENGTH);
+          ID[i], THETA_RES_ADDRESS, THETA_RES_DATA_LENGTH);
       if (crslave.dxl_getdata_result != true) {
         crslave.datareadflag++;
       }
     }
     if (crslave.datareadflag == 0) {
       for (int i = 0; i < JOINT_NUM2; i++) {
-        crslave.dxl_present_position = crslave.groupBulkRead->getData(
-            ID[i], PRESENT_POSITION_ADDRESS,
-            PRESENT_POSITION_DATA_LENGTH);  //返信データから指定のデータを読む
-        crslave.present_position[i] =
-            dxlvalue2rad(crslave.dxl_present_position);
+        crslave.dxl_theta_res = crslave.groupBulkRead->getData(
+            ID[i], THETA_RES_ADDRESS,
+            THETA_RES_DATA_LENGTH);  //返信データから指定のデータを読む
+        crslave.theta_res[i] =
+            dxlvalue2rad(crslave.dxl_theta_res);
       }
     }
 
     for (int i = 0; i < JOINT_NUM2; i++) {
-      crslave.d_theta_res[i] =
-          (crslave.present_position[i] - crslave.d_theta_temp[i]) * g[i];
-      crslave.d_theta_temp[i] += crslave.d_theta_res[i] * ts;
+      crslave.omega_res[i] =
+          (crslave.theta_res[i] - crslave.d_theta_temp[i]) * g[i];
+      crslave.d_theta_temp[i] += crslave.omega_res[i] * ts;
     }
 
     for (int i = 0; i < JOINT_NUM2; i++) {
-      if (fabs(crslave.d_theta_res[i]) >= LIMIT_SPEED[i]) {
+      if (fabs(crslave.omega_res[i]) >= LIMIT_SPEED[i]) {
         crslave.Disable_Dynamixel_Torque(ID);
         crslave.Setoperation(POSITION_CONTROL_MODE, ID);
         crslave.Enable_Dynamixel_Torque(ID);
-        crslave.Move_Goal_Position(save_pose, ID, JOINT_MIN, JOINT_MAX);
+        crslave.Move_Theta_Ref(save_pose, ID, JOINT_MIN, JOINT_MAX);
         sleep(5);
         printf("crslaveの軸%dが速いので終了\n", i);
-        crslave.Move_Goal_Position(finish_pose, ID, JOINT_MIN, JOINT_MAX);
+        crslave.Move_Theta_Ref(finish_pose, ID, JOINT_MIN, JOINT_MAX);
         sleep(5);
         dprintf(sock, "%s", "**");
         close(sock);
@@ -399,18 +399,18 @@ void *slave_control(void *) {
                   "%5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f "
                   "%5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f "
                   "%5.4f %5.4f %5.4f %5.4f %5.4f",
-                  (float)crslave.present_position[0],
-                  (float)crslave.present_position[1],
-                  (float)crslave.present_position[2],
-                  (float)crslave.present_position[3],
-                  (float)crslave.present_position[4],
-                  (float)crslave.present_position[5],
-                  (float)crslave.present_position[6],
-                  (float)crslave.present_position[7],
-                  (float)crslave.d_theta_res[0], (float)crslave.d_theta_res[1],
-                  (float)crslave.d_theta_res[2], (float)crslave.d_theta_res[3],
-                  (float)crslave.d_theta_res[4], (float)crslave.d_theta_res[5],
-                  (float)crslave.d_theta_res[6], (float)crslave.d_theta_res[7],
+                  (float)crslave.theta_res[0],
+                  (float)crslave.theta_res[1],
+                  (float)crslave.theta_res[2],
+                  (float)crslave.theta_res[3],
+                  (float)crslave.theta_res[4],
+                  (float)crslave.theta_res[5],
+                  (float)crslave.theta_res[6],
+                  (float)crslave.theta_res[7],
+                  (float)crslave.omega_res[0], (float)crslave.omega_res[1],
+                  (float)crslave.omega_res[2], (float)crslave.omega_res[3],
+                  (float)crslave.omega_res[4], (float)crslave.omega_res[5],
+                  (float)crslave.omega_res[6], (float)crslave.omega_res[7],
                   (float)crslave.tau_res[0], (float)crslave.tau_res[1],
                   (float)crslave.tau_res[2], (float)crslave.tau_res[3],
                   (float)crslave.tau_res[4], (float)crslave.tau_res[5],
@@ -421,20 +421,20 @@ void *slave_control(void *) {
           printf("送った\n");
           printf(
               "\nangle\t\t:\t%5.4f\t%5.4f\t%5.4f\t%5.4f\t%5.4f\t%5.4f\t%5.4f\n",
-              (float)crslave.present_position[0],
-              (float)crslave.present_position[1],
-              (float)crslave.present_position[3],
-              (float)crslave.present_position[4],
-              (float)crslave.present_position[5],
-              (float)crslave.present_position[6],
-              (float)crslave.present_position[7]);
+              (float)crslave.theta_res[0],
+              (float)crslave.theta_res[1],
+              (float)crslave.theta_res[3],
+              (float)crslave.theta_res[4],
+              (float)crslave.theta_res[5],
+              (float)crslave.theta_res[6],
+              (float)crslave.theta_res[7]);
           printf(
-              "d_theta_res\t\t:\t%5.4f\t%5.4f\t%5.4f\t%5.4f\t%5.4f\t%5.4f\t%5."
+              "omega_res\t\t:\t%5.4f\t%5.4f\t%5.4f\t%5.4f\t%5.4f\t%5.4f\t%5."
               "4f\n",
-              (float)crslave.d_theta_res[0], (float)crslave.d_theta_res[1],
-              (float)crslave.d_theta_res[3], (float)crslave.d_theta_res[4],
-              (float)crslave.d_theta_res[5], (float)crslave.d_theta_res[6],
-              (float)crslave.d_theta_res[7]);
+              (float)crslave.omega_res[0], (float)crslave.omega_res[1],
+              (float)crslave.omega_res[3], (float)crslave.omega_res[4],
+              (float)crslave.omega_res[5], (float)crslave.omega_res[6],
+              (float)crslave.omega_res[7]);
           printf(
               "tau_res\t\t:\t%5.4f\t%5.4f\t%5.4f\t%5.4f\t%5.4f\t%5.4f\t%5.4f\n",
               (float)crslave.tau_res[0], (float)crslave.tau_res[1],
@@ -481,37 +481,37 @@ void *slave_control(void *) {
     // 4.2     通信始めてからLSTMがなれるまでマージンとってる
     if (passtime <= 4.3) {
       for (int i = 0; i < JOINT_NUM2; i++) {
-        crslave.goal_position[i] = goal_pose[i];
-        crslave.goal_velocity[i] = 0.0;
-        crslave.target_torque[i] = 0.0;
-        p_th_s_res[i] = crslave.present_position[i];
-        p_dth_s_res[i] = crslave.d_theta_res[i];
+        crslave.theta_ref[i] = goal_pose[i];
+        crslave.omega_ref[i] = 0.0;
+        crslave.tau_ref[i] = 0.0;
+        p_th_s_res[i] = crslave.theta_res[i];
+        p_dth_s_res[i] = crslave.omega_res[i];
         p_tau_s_res[i] = crslave.tau_res[i];
       }
     } else {
       for (int i = 0; i < JOINT_NUM2; i++) {
         if (i == 2) {
-          // p_th_s_res[i] = crslave.present_position[i];
-          // p_dth_s_res[i] = crslave.d_theta_res[i];
+          // p_th_s_res[i] = crslave.theta_res[i];
+          // p_dth_s_res[i] = crslave.omega_res[i];
           // p_tau_s_res[i] = crslave.tau_res[i];
-          crslave.goal_position[i] = 3.14;
-          crslave.goal_velocity[i] = 0.0;
-          crslave.target_torque[i] = 0.0;
+          crslave.theta_ref[i] = 3.14;
+          crslave.omega_ref[i] = 0.0;
+          crslave.tau_ref[i] = 0.0;
         } else if (i < 2) {
-          // p_th_s_res[i] = crslave.present_position[i];
-          // p_dth_s_res[i] = crslave.d_theta_res[i];
+          // p_th_s_res[i] = crslave.theta_res[i];
+          // p_dth_s_res[i] = crslave.omega_res[i];
           // p_tau_s_res[i] = crslave.tau_res[i];
-          crslave.goal_position[i] = a[i];
-          crslave.goal_velocity[i] = a[i + (JOINT_NUM2 - 1) * 1];
-          crslave.target_torque[i] = a[i + (JOINT_NUM2 - 1) * 2];
+          crslave.theta_ref[i] = a[i];
+          crslave.omega_ref[i] = a[i + (JOINT_NUM2 - 1) * 1];
+          crslave.tau_ref[i] = a[i + (JOINT_NUM2 - 1) * 2];
 
         } else {
-          // p_th_s_res[i] = crslave.present_position[i];
-          // p_dth_s_res[i] = crslave.d_theta_res[i];
+          // p_th_s_res[i] = crslave.theta_res[i];
+          // p_dth_s_res[i] = crslave.omega_res[i];
           // p_tau_s_res[i] = crslave.tau_res[i];
-          crslave.goal_position[i] = a[i - 1];
-          crslave.goal_velocity[i] = a[i - 1 + (JOINT_NUM2 - 1) * 1];
-          crslave.target_torque[i] = a[i - 1 + (JOINT_NUM2 - 1) * 2];
+          crslave.theta_ref[i] = a[i - 1];
+          crslave.omega_ref[i] = a[i - 1 + (JOINT_NUM2 - 1) * 1];
+          crslave.tau_ref[i] = a[i - 1 + (JOINT_NUM2 - 1) * 2];
         }
       }
     }
@@ -523,74 +523,74 @@ void *slave_control(void *) {
       crslave.tau_p[i] =
           J[SLAVE][i] / 2.0 *
           (Kp[SLAVE][i] *
-               (crslave.goal_position[i] - crslave.present_position[i]) +
-           Kd[SLAVE][i] * (crslave.goal_velocity[i] - crslave.d_theta_res[i]));
+               (crslave.theta_ref[i] - crslave.theta_res[i]) +
+           Kd[SLAVE][i] * (crslave.omega_ref[i] - crslave.omega_res[i]));
       //力制御によるトルク参照値
       crslave.tau_f[i] =
-          Kf[SLAVE][i] / 2.0 * (-crslave.target_torque[i] - crslave.tau_res[i]);
+          Kf[SLAVE][i] / 2.0 * (-crslave.tau_ref[i] - crslave.tau_res[i]);
       crslave.goal_torque[i] =
           crslave.tau_p[i] + crslave.tau_f[i] + crslave.tau_dis[i];
 
       // DOB
       crslave.dob0[i] =
-          crslave.goal_torque[i] + g[i] * J[SLAVE][i] * crslave.d_theta_res[i];
+          crslave.goal_torque[i] + g[i] * J[SLAVE][i] * crslave.omega_res[i];
       crslave.dob1[i] = g[i] * (crslave.dob0[i] - crslave.dob2[i]);
       crslave.dob2[i] += crslave.dob1[i] * ts;
 
       //外乱トルクの算出
       crslave.tau_dis[i] =
-          crslave.dob2[i] - g[i] * J[SLAVE][i] * crslave.d_theta_res[i];
+          crslave.dob2[i] - g[i] * J[SLAVE][i] * crslave.omega_res[i];
     }
 
     crslave.tau_res[0] =
-        crslave.tau_dis[0] - D[SLAVE][0] * crslave.d_theta_res[0];
+        crslave.tau_dis[0] - D[SLAVE][0] * crslave.omega_res[0];
     crslave.tau_res[1] =
-        crslave.tau_dis[1] - M[SLAVE][0] * sin(crslave.present_position[1]) +
+        crslave.tau_dis[1] - M[SLAVE][0] * sin(crslave.theta_res[1]) +
         M[SLAVE][1] *
-            sin(crslave.present_position[1] + crslave.present_position[3]);
+            sin(crslave.theta_res[1] + crslave.theta_res[3]);
     crslave.tau_res[2] =
-        crslave.tau_dis[2] - D[SLAVE][1] * crslave.d_theta_res[2];
+        crslave.tau_dis[2] - D[SLAVE][1] * crslave.omega_res[2];
     crslave.tau_res[3] =
-        crslave.tau_dis[3] + M[SLAVE][2] * sin(crslave.present_position[1] +
-                                               crslave.present_position[3]);
+        crslave.tau_dis[3] + M[SLAVE][2] * sin(crslave.theta_res[1] +
+                                               crslave.theta_res[3]);
     crslave.tau_res[4] =
-        crslave.tau_dis[4] - D[SLAVE][2] * crslave.d_theta_res[4];
+        crslave.tau_dis[4] - D[SLAVE][2] * crslave.omega_res[4];
     crslave.tau_res[5] =
-        crslave.tau_dis[5] - D[SLAVE][3] * crslave.d_theta_res[5];
+        crslave.tau_dis[5] - D[SLAVE][3] * crslave.omega_res[5];
     crslave.tau_res[6] =
-        crslave.tau_dis[6] - D[SLAVE][4] * crslave.d_theta_res[6];
+        crslave.tau_dis[6] - D[SLAVE][4] * crslave.omega_res[6];
     crslave.tau_res[7] =
-        crslave.tau_dis[7] - D[SLAVE][5] * crslave.d_theta_res[7];
+        crslave.tau_dis[7] - D[SLAVE][5] * crslave.omega_res[7];
 
     fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,", passtime,
-            crslave.present_position[0], crslave.present_position[1],
-            crslave.present_position[2], crslave.present_position[3],
-            crslave.present_position[4], crslave.present_position[5],
-            crslave.present_position[6], crslave.present_position[7]);
+            crslave.theta_res[0], crslave.theta_res[1],
+            crslave.theta_res[2], crslave.theta_res[3],
+            crslave.theta_res[4], crslave.theta_res[5],
+            crslave.theta_res[6], crslave.theta_res[7]);
     fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,",
-            crslave.d_theta_res[0], crslave.d_theta_res[1],
-            crslave.d_theta_res[2], crslave.d_theta_res[3],
-            crslave.d_theta_res[4], crslave.d_theta_res[5],
-            crslave.d_theta_res[6], crslave.d_theta_res[7]);
+            crslave.omega_res[0], crslave.omega_res[1],
+            crslave.omega_res[2], crslave.omega_res[3],
+            crslave.omega_res[4], crslave.omega_res[5],
+            crslave.omega_res[6], crslave.omega_res[7]);
     fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,", crslave.tau_res[0],
             crslave.tau_res[1], crslave.tau_res[2], crslave.tau_res[3],
             crslave.tau_res[4], crslave.tau_res[5], crslave.tau_res[6],
             crslave.tau_res[7]);
     fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,",
-            crslave.goal_position[0], crslave.goal_position[1],
-            crslave.goal_position[2], crslave.goal_position[3],
-            crslave.goal_position[4], crslave.goal_position[5],
-            crslave.goal_position[6], crslave.goal_position[7]);
+            crslave.theta_ref[0], crslave.theta_ref[1],
+            crslave.theta_ref[2], crslave.theta_ref[3],
+            crslave.theta_ref[4], crslave.theta_ref[5],
+            crslave.theta_ref[6], crslave.theta_ref[7]);
     fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,",
-            crslave.goal_velocity[0], crslave.goal_velocity[1],
-            crslave.goal_velocity[2], crslave.goal_velocity[3],
-            crslave.goal_velocity[4], crslave.goal_velocity[5],
-            crslave.goal_velocity[6], crslave.goal_velocity[7]);
+            crslave.omega_ref[0], crslave.omega_ref[1],
+            crslave.omega_ref[2], crslave.omega_ref[3],
+            crslave.omega_ref[4], crslave.omega_ref[5],
+            crslave.omega_ref[6], crslave.omega_ref[7]);
     fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,",
-            crslave.target_torque[0], crslave.target_torque[1],
-            crslave.target_torque[2], crslave.target_torque[3],
-            crslave.target_torque[4], crslave.target_torque[5],
-            crslave.target_torque[6], crslave.target_torque[7]);
+            crslave.tau_ref[0], crslave.tau_ref[1],
+            crslave.tau_ref[2], crslave.tau_ref[3],
+            crslave.tau_ref[4], crslave.tau_ref[5],
+            crslave.tau_ref[6], crslave.tau_ref[7]);
     fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,", a[0], a[1], a[2], a[3],
             a[4], a[5], a[6]);
     fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,", a[7], a[8], a[9],
@@ -618,9 +618,9 @@ void *slave_control(void *) {
   crslave.Disable_Dynamixel_Torque(ID);
   crslave.Setoperation(POSITION_CONTROL_MODE, ID);
   crslave.Enable_Dynamixel_Torque(ID);
-  crslave.Move_Goal_Position(save_pose, ID, JOINT_MIN, JOINT_MAX);
+  crslave.Move_Theta_Ref(save_pose, ID, JOINT_MIN, JOINT_MAX);
   sleep(5);
-  crslave.Move_Goal_Position(finish_pose, ID, JOINT_MIN, JOINT_MAX);
+  crslave.Move_Theta_Ref(finish_pose, ID, JOINT_MIN, JOINT_MAX);
   sleep(5);
   dprintf(sock, "%s", "**");
   close(sock);

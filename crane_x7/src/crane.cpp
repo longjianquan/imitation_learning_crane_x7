@@ -26,6 +26,9 @@
 
 #include "crane_x7_comm.h"
 #include "dynamixel_sdk.h"
+#include "params.h"
+
+static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /**
  * @brief コンストラクタ
@@ -42,21 +45,21 @@ CR7::CR7() {
   dxl_error = 0;                   // Dynamixel error
   datareadflag = 0;
 
-  dxl_present_position = {0};
+  dxl_theta_res = {0};
   dxl_present_velocity = {0};
   dxl_present_torque = {0};
 
   for (int j = 0; j < JOINT_NUM; j++) {
-    present_position[j] = 0;
+    theta_res[j] = 0;
     present_velocity[j] = 0;
     present_torque[j] = 0;
     goal_current[j] = 0;
 
-    goal_position[j] = 0;
-    goal_velocity[j] = 0;
+    theta_ref[j] = 0;
+    omega_ref[j] = 0;
     goal_torque[j] = 0;
-    target_torque[j] = 0;
-    d_theta_res[j] = 0;
+    tau_ref[j] = 0;
+    omega_res[j] = 0;
     d_theta_temp[j] = 0;
     tau_p[j] = 0;
     tau_f[j] = 0;
@@ -82,21 +85,21 @@ CR7::CR7(const char *devicename, int masterorslave) {
   dxl_error = 0;                   // Dynamixel error
   datareadflag = 0;
 
-  dxl_present_position = {0};
+  dxl_theta_res = {0};
   dxl_present_velocity = {0};
   dxl_present_torque = {0};
 
   for (int j = 0; j < JOINT_NUM; j++) {
-    present_position[j] = 0;
+    theta_res[j] = 0;
     present_velocity[j] = 0;
     present_torque[j] = 0;
     goal_current[j] = 0;
 
-    goal_position[j] = 0;
-    goal_velocity[j] = 0;
-    target_torque[j] = 0;
+    theta_ref[j] = 0;
+    omega_ref[j] = 0;
+    tau_ref[j] = 0;
     goal_torque[j] = 0;
-    d_theta_res[j] = 0;
+    omega_res[j] = 0;
     d_theta_temp[j] = 0;
     tau_p[j] = 0;
     tau_f[j] = 0;
@@ -107,25 +110,57 @@ CR7::CR7(const char *devicename, int masterorslave) {
     dob1[j] = 0;
     dob2[j] = 0;
   }
+
+  /////////////////// csv //////////////////////
   if (ms == 0) {
-    // sleep(4);
-    // cout << "マスターのファイル名を入力して下さい"<<endl;
-    // cin >> filename2;
-    printf("aa\n");
-    filename2 = "master.csv";
+    filename = "master.csv";
+    ffp = fopen(filename.c_str(), "w");
+
+    fprintf(ffp, "time,");
+
+    for (int i = 0; i < 8; i++) fprintf(ffp, "m_presentposition[%d],", i);
+    for (int i = 0; i < 8; i++) fprintf(ffp, "m_presentvelocity[%d],", i);
+    for (int i = 0; i < 8; i++) fprintf(ffp, "m_tau_res[%d],", i);
+
+    for (int i = 0; i < 8; i++) fprintf(ffp, "s_presentposition[%d],", i);
+    for (int i = 0; i < 8; i++) fprintf(ffp, "s_presentvelocity[%d],", i);
+    for (int i = 0; i < 8; i++) fprintf(ffp, "s_tau_res[%d],", i);
+
+    for (int i = 0; i < 8; i++) fprintf(ffp, "m_goal_torque[%d],", i);
+    for (int i = 0; i < 8; i++) fprintf(ffp, "m_tau_dis[%d],", i);
+    for (int i = 0; i < 8; i++) fprintf(ffp, "m_dob0[%d],", i);
+    for (int i = 0; i < 8; i++) fprintf(ffp, "m_dob1[%d],", i);
+    for (int i = 0; i < 8; i++) fprintf(ffp, "m_dob2[%d],", i);
   } else {
-    // sleep(4);
-    // cout << "スレーブのファイル名を入力して下さい"<<endl;
-    // cin >> filename2;
-    filename2 = "slave.csv";
+    filename = "slave.csv";
+    ffp = fopen(filename.c_str(), "w");
+
+    fprintf(ffp, "time,");
+
+    for (int i = 0; i < 8; i++) fprintf(ffp, "s_presentposition[%d],", i);
+    for (int i = 0; i < 8; i++) fprintf(ffp, "s_presentvelocity[%d],", i);
+    for (int i = 0; i < 8; i++) fprintf(ffp, "s_tau_res[%d],", i);
+
+    for (int i = 0; i < 8; i++) fprintf(ffp, "m_presentposition[%d],", i);
+    for (int i = 0; i < 8; i++) fprintf(ffp, "m_presentvelocity[%d],", i);
+    for (int i = 0; i < 8; i++) fprintf(ffp, "m_tau_res[%d],", i);
+
+    for (int i = 0; i < 8; i++) fprintf(ffp, "s_goal_torque[%d],", i);
+    for (int i = 0; i < 8; i++) fprintf(ffp, "s_tau_dis[%d],", i);
+    for (int i = 0; i < 8; i++) fprintf(ffp, "s_dob0[%d],", i);
+    for (int i = 0; i < 8; i++) fprintf(ffp, "s_dob1[%d],", i);
+    for (int i = 0; i < 8; i++) fprintf(ffp, "s_dob2[%d],", i);
   }
+
+  fprintf(ffp, "sleeptime,controltime\n");
+  //////////////////////////////////////////////
 }
 
-int CR7::Readpresent_position(int ID[JOINT_NUM]) {
+int CR7::Readtheta_res(int ID[JOINT_NUM]) {
   for (int i = 0; i < JOINT_NUM2; i++) {
     dxl_addparam_result = groupBulkRead->addParam(
-        ID[i], PRESENT_POSITION_ADDRESS,
-        PRESENT_POSITION_DATA_LENGTH);  //読み込みのデータを設定(現在角度)
+        ID[i], THETA_RES_ADDRESS,
+        THETA_RES_DATA_LENGTH);  //読み込みのデータを設定(現在角度)
   }
 
   // Bulkread present position
@@ -134,17 +169,17 @@ int CR7::Readpresent_position(int ID[JOINT_NUM]) {
 
   // Check if groupbulkread data of Dynamixel is available
   for (int i = 0; i < JOINT_NUM2; i++) {  //返信データが利用できるか確認
-    dxl_getdata_result = groupBulkRead->isAvailable(
-        ID[i], PRESENT_POSITION_ADDRESS, PRESENT_POSITION_DATA_LENGTH);
+    dxl_getdata_result = groupBulkRead->isAvailable(ID[i], THETA_RES_ADDRESS,
+                                                    THETA_RES_DATA_LENGTH);
     if (dxl_getdata_result != true) {
-      printf("bbbbbbbbbbb ID[%d] : groupBulkRead getdata failed\n", ID[i]);
+      printf(" ID[%d] : groupBulkRead getdata failed\n", ID[i]);
     }
   }
   for (int i = 0; i < JOINT_NUM2; i++) {
-    dxl_present_position = groupBulkRead->getData(
-        ID[i], PRESENT_POSITION_ADDRESS,
-        PRESENT_POSITION_DATA_LENGTH);  //返信データから指定のデータを読む
-    present_position[i] = dxlvalue2rad(dxl_present_position);
+    dxl_theta_res = groupBulkRead->getData(
+        ID[i], THETA_RES_ADDRESS,
+        THETA_RES_DATA_LENGTH);  //返信データから指定のデータを読む
+    theta_res[i] = dxlvalue2rad(dxl_theta_res);
   }
   return 0;
 }
@@ -368,14 +403,14 @@ void CR7::Disable_Dynamixel_Torque(int ID[JOINT_NUM]) {
 }
 
 /**
- * @fn		void Move_Goal_Position()
+ * @fn		void Move_Theta_Ref()
  * @brief	設定してあるGoal Positionへ移動
  * @param	goal_pose[8](static double goal_pose[8])
  * サーボの個数分のデータ(deg)
  */
-void CR7::Move_Goal_Position(double *goal_pose, int ID[JOINT_NUM],
-                             double JOINT_MIN[JOINT_NUM],
-                             double JOINT_MAX[JOINT_NUM]) {
+void CR7::Move_Theta_Ref(double *goal_pose, int ID[JOINT_NUM],
+                         double JOINT_MIN[JOINT_NUM],
+                         double JOINT_MAX[JOINT_NUM]) {
   // Move target goal position
 
   for (int i = 0; i < JOINT_NUM2; i++) {
@@ -397,15 +432,15 @@ void CR7::Move_Goal_Position(double *goal_pose, int ID[JOINT_NUM],
       exit(1);
     }
 
-    param_goal_position[0] = DXL_LOBYTE(
+    param_theta_ref[0] = DXL_LOBYTE(
         DXL_LOWORD(rad2dxlvalue(goal_pose[i])));  //通信用にデータを分ける
-    param_goal_position[1] = DXL_HIBYTE(DXL_LOWORD(rad2dxlvalue(goal_pose[i])));
-    param_goal_position[2] = DXL_LOBYTE(DXL_HIWORD(rad2dxlvalue(goal_pose[i])));
-    param_goal_position[3] = DXL_HIBYTE(DXL_HIWORD(rad2dxlvalue(goal_pose[i])));
+    param_theta_ref[1] = DXL_HIBYTE(DXL_LOWORD(rad2dxlvalue(goal_pose[i])));
+    param_theta_ref[2] = DXL_LOBYTE(DXL_HIWORD(rad2dxlvalue(goal_pose[i])));
+    param_theta_ref[3] = DXL_HIBYTE(DXL_HIWORD(rad2dxlvalue(goal_pose[i])));
 
     dxl_addparam_result = groupBulkWrite->addParam(
-        ID[i], GOAL_POSITION_ADDRESS, GOAL_POSITION_DATA_LENGTH,
-        param_goal_position);  //書き込み用のパケットに追加
+        ID[i], THETA_REF_ADDRESS, THETA_REF_DATA_LENGTH,
+        param_theta_ref);  //書き込み用のパケットに追加
     if (dxl_addparam_result != true) printf("goal pose error!\n");
   }
   printf("\n");
@@ -427,15 +462,15 @@ void CR7::Move_Offset_Position(int ID[JOINT_NUM]) {
   // Move offset position
 
   for (int i = 0; i < JOINT_NUM2 - 2; i++) {
-    param_goal_position[0] = DXL_LOBYTE(
+    param_theta_ref[0] = DXL_LOBYTE(
         DXL_LOWORD(DXL_CENTER_POSITION_VALUE));  //通信用にデータを分ける
-    param_goal_position[1] = DXL_HIBYTE(DXL_LOWORD(DXL_CENTER_POSITION_VALUE));
-    param_goal_position[2] = DXL_LOBYTE(DXL_HIWORD(DXL_CENTER_POSITION_VALUE));
-    param_goal_position[3] = DXL_HIBYTE(DXL_HIWORD(DXL_CENTER_POSITION_VALUE));
+    param_theta_ref[1] = DXL_HIBYTE(DXL_LOWORD(DXL_CENTER_POSITION_VALUE));
+    param_theta_ref[2] = DXL_LOBYTE(DXL_HIWORD(DXL_CENTER_POSITION_VALUE));
+    param_theta_ref[3] = DXL_HIBYTE(DXL_HIWORD(DXL_CENTER_POSITION_VALUE));
 
     dxl_addparam_result = groupBulkWrite->addParam(
-        ID[i], GOAL_POSITION_ADDRESS, GOAL_POSITION_DATA_LENGTH,
-        param_goal_position);  //書き込み用のパケットに追加
+        ID[i], THETA_REF_ADDRESS, THETA_REF_DATA_LENGTH,
+        param_theta_ref);  //書き込み用のパケットに追加
   }
   if (dxl_addparam_result != true) printf("offset error!\n");
 
@@ -456,4 +491,111 @@ void CR7::Close_port() {
   // Close port
   portHandler->closePort();
   printf("port close and exit program\n");
+}
+
+/**
+ * @fn		void write_csv()
+ * @brief  csvファイルに現在の状態を書き込む
+ */
+void CR7::write_csv(double time, long sleep_time, double control_time) {
+  fprintf(ffp, "%lf,", time);
+
+  for (int i = 0; i < 8; i++) fprintf(ffp, "%lf,", theta_res[i]);
+  for (int i = 0; i < 8; i++) fprintf(ffp, "%lf,", omega_res[i]);
+  for (int i = 0; i < 8; i++) fprintf(ffp, "%lf,", tau_res[i]);
+
+  for (int i = 0; i < 8; i++) fprintf(ffp, "%lf,", theta_ref[i]);
+  for (int i = 0; i < 8; i++) fprintf(ffp, "%lf,", omega_ref[i]);
+  for (int i = 0; i < 8; i++) fprintf(ffp, "%lf,", tau_ref[i]);
+
+  for (int i = 0; i < 8; i++) fprintf(ffp, "%lf,", goal_torque[i]);
+  for (int i = 0; i < 8; i++) fprintf(ffp, "%lf,", tau_dis[i]);
+  for (int i = 0; i < 8; i++) fprintf(ffp, "%lf,", dob0[i]);
+  for (int i = 0; i < 8; i++) fprintf(ffp, "%lf,", dob1[i]);
+  for (int i = 0; i < 8; i++) fprintf(ffp, "%lf,", dob2[i]);
+
+  fprintf(ffp, "%ld,%lf\n", sleep_time, control_time);
+}
+
+/**
+ * @fn		void torque_control()
+ * @brief  位置と力のハイブリッド制御
+ */
+void CR7::position_control(double theta_ref[JOINT_NUM]) {
+  pthread_mutex_lock(&mutex);
+  for (int i = 0; i < JOINT_NUM2; i++) {
+    // set target value
+    if (i == 2) {
+      theta_ref[i] = 3.14;
+      omega_ref[i] = 0.0;
+      tau_ref[i] = 0.0;
+    } else {
+      theta_ref[i] = theta_ref[i];
+      omega_ref[i] = 0.0;
+      tau_ref[i] = 0.0;
+    }
+  }
+  pthread_mutex_unlock(&mutex);
+
+  controller();
+}
+
+/**
+ * @fn		void torque_control()
+ * @brief  位置と力のハイブリッド制御
+ */
+void CR7::torque_control(double theta_ref[JOINT_NUM],
+                         double omega_ref[JOINT_NUM],
+                         double tau_ref[JOINT_NUM]) {
+  pthread_mutex_lock(&mutex);
+  for (int i = 0; i < JOINT_NUM2; i++) {
+    // set target value
+    if (i == 2) {
+      theta_ref[i] = 3.14;
+      omega_ref[i] = 0.0;
+      tau_ref[i] = 0.0;
+    } else {
+      theta_ref[i] = theta_ref[i];
+      omega_ref[i] = omega_ref[i];
+      tau_ref[i] = tau_ref[i];
+    }
+  }
+  pthread_mutex_unlock(&mutex);
+
+  controller();
+}
+
+/**
+ * @fn		void controller()
+ * @brief  位置と力のハイブリッド制御器
+ */
+void CR7::controller() {
+  for (int i = 0; i < JOINT_NUM2; i++) {
+    // position control
+    tau_p[i] = J[i] / 2.0 *
+               (Kp[i] * (theta_ref[i] - theta_res[i]) +
+                Kd[i] * (omega_ref[i] - omega_res[i]));
+
+    // torque control
+    tau_f[i] = Kf[i] / 2.0 * (-tau_ref[i] - tau_res[i]);
+    goal_torque[i] = tau_p[i] + tau_f[i] + tau_dis[i];
+
+    // DOB
+    dob0[i] = goal_torque[i] + g[i] * J[i] * omega_res[i];
+    dob1[i] = g[i] * (dob0[i] - dob2[i]);
+    double ts = 0.002;
+    dob2[i] += dob1[i] * ts;
+
+    //外乱トルクの算出
+    tau_dis[i] = dob2[i] - g[i] * J[i] * omega_res[i];
+
+    tau_res[i] = tau_dis[i] - D[i] * omega_res[i];
+  }
+
+  // 重力補償
+  double theta_3 = theta_res[1] + theta_res[3];
+  tau_res[1] = tau_dis[1] - M[0] * sin(theta_res[1]) + M[1] * sin(theta_3);
+  tau_res[3] = tau_dis[3] + M[2] * sin(theta_3);
+
+  setCranex7Torque(goal_torque, ID);
 }
