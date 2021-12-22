@@ -33,8 +33,9 @@ class BCTrainer(Tranier):
         learning_rate: float,
         wandb_flag: bool,
         gpu: list = [0],
+        n_autoregressive: int = 1,
     ):
-        self.n_autoregressive = 15
+        self.n_autoregressive = n_autoregressive
         self.out_dir = out_dir
         self.loss_fn = nn.MSELoss()
         self.device = torch.device(f'cuda:{gpu[0]}'
@@ -217,6 +218,7 @@ def main(args):
         image_size=args.image_size,
         wandb_flag=args.wandb,
         gpu=args.gpu,
+        n_autoregressive=args.autoregressive,
     ).train(args.epoch)
 
 
@@ -232,6 +234,7 @@ def argparse():
     parser.add_argument('--wandb', action='store_true')
     def tp(x): return list(map(int, x.split(',')))
     parser.add_argument('--gpu', type=tp, default='0')
+    parser.add_argument('--autoregressive', type=int, default=1)
     args = parser.parse_args()
     return args
 
