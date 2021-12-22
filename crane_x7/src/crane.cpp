@@ -502,7 +502,7 @@ void CR7::Close_port() {
 
 /**
  * @fn		void write_csv()
- * @brief  csvファイルに現在の状態を書き込む
+ * @brief  write current state to csv file
  */
 void CR7::write_csv(double time, long sleep_time, double control_time) {
   fprintf(ffp, "%lf,", time);
@@ -526,8 +526,8 @@ void CR7::write_csv(double time, long sleep_time, double control_time) {
 }
 
 /**
- * @fn		void torque_control()
- * @brief  位置と力のハイブリッド制御
+ * @fn		void position_control()
+ * @brief  position control
  */
 void CR7::position_control(double theta_ref[JOINT_NUM]) {
   pthread_mutex_lock(&mutex);
@@ -549,8 +549,8 @@ void CR7::position_control(double theta_ref[JOINT_NUM]) {
 }
 
 /**
- * @fn		void torque_control()
- * @brief  位置と力のハイブリッド制御
+ * @fn    void torque_control()
+ * @brief position and torque control
  */
 void CR7::torque_control(double theta_ref[JOINT_NUM],
                          double omega_ref[JOINT_NUM],
@@ -574,8 +574,8 @@ void CR7::torque_control(double theta_ref[JOINT_NUM],
 }
 
 /**
- * @fn		void controller()
- * @brief  位置と力のハイブリッド制御器
+ * @fn    void controller()
+ * @brief position and force controller
  */
 void CR7::controller() {
   for (int i = 0; i < JOINT_NUM2; i++) {
