@@ -2,15 +2,11 @@ import torch
 import wandb
 import time
 import os
+import shutil
 
 import matplotlib.pyplot as plt
 import seaborn as sns
 sns.set()
-
-import sys
-sys.path.append('.')
-from util.print_progress_bar import print_progress_bar
-
 
 class Tranier():
     def __init__(self,
@@ -55,6 +51,22 @@ class Tranier():
             os.makedirs(out_dir)
         print(f'save to {out_dir}')
 
+    def _print_progress_bar(i, length, width=None, end='\n', header=''):
+        digits = len(str(length))
+        i_str = format(i+1, '0' + str(digits))
+        footer = '{}/{}'.format(i_str, length)
+        if width == None:
+            terminal_size = shutil.get_terminal_size()
+            width = terminal_size.columns-len(header)-len(footer)-5
+
+        if i >= length - 1:
+            progress_bar = '=' * width
+            end = end
+        else:
+            num = round(i / (length-1) * width)
+            progress_bar = '=' * (num-1) + '>' + ' ' * (width-num)
+            end = ''
+        print('\r\033[K{} [{}] {}'.format(header, progress_bar, footer), end=end)
 
     def train(
         self,
@@ -80,7 +92,7 @@ class Tranier():
                 running_loss += loss.item()
 
                 header = f'epoch: {epoch}'
-                print_progress_bar(
+                self._print_progress_bar(
                     i, len(self.train_loader), end='', header=header)
             train_loss = running_loss / len(self.train_loader)
             self.train_losses.append(train_loss)
