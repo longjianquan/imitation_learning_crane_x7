@@ -56,6 +56,7 @@ void *slave_control(void *) {
   struct timeval end_time_s;
   int t1 = 0;
 
+  ///// socket /////
   sock = socket(AF_INET, SOCK_STREAM, 0);
 
   addr.sin_family = AF_INET;
@@ -66,6 +67,14 @@ void *slave_control(void *) {
 
   FD_ZERO(&fds);
   FD_SET(sock, &fds);
+
+  if (FD_ISSET(sock, &fdr) && sendf == false) {
+    l = recv(sock, rbuf, sizeof(rbuf), 0);
+    *(rbuf + l) = 0;
+
+    printf("-> %s\n", rbuf);
+  }
+  ////////////////////
 
   CR7 crslave(devicename1, SLAVE);
   if (!crslave.Open_port()) return NULL;  // COMポートを開く
@@ -380,6 +389,7 @@ void *slave_control(void *) {
     memcpy(&fdr, &fds, sizeof(fd_set));
 
     // はじめから6秒経つまで通信はとりあえず行わないようにしている
+    // socket
     if (passtime >= 2.0) {
       ret = select(sock + 1, &fdr, &fdw, NULL, NULL);
 

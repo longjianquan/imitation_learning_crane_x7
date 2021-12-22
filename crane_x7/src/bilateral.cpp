@@ -122,28 +122,46 @@ void *slave_control(void *) {
    ***********************************************************/
   printf("==========slave_p_controlstart==========\n");
   crslave.ffp = fopen(crslave.filename2.c_str(), "w");
-  fprintf(crslave.ffp,
-          "time,s_presentposition[0],s_presentposition[1],s_presentposition[2],"
-          "s_presentposition[3],s_presentposition[4],s_presentposition[5],s_"
-          "presentposition[6],s_presentposition[7],");
-  fprintf(crslave.ffp,
-          "s_presentvelocity[0],s_presentvelocity[1],s_presentvelocity[2],s_"
-          "presentvelocity[3],s_presentvelocity[4],s_presentvelocity[5],s_"
-          "presentvelocity[6],s_presentvelocity[7],");
-  fprintf(crslave.ffp,
-          "s_tau_res[0],s_tau_res[1],s_tau_res[2],s_tau_res[3],s_tau_res[4],s_"
-          "tau_res[5],s_tau_res[6],s_tau_res[7],");
-  fprintf(crslave.ffp,
-          "m_presentposition[0],m_presentposition[1],m_presentposition[2],m_"
-          "presentposition[3],m_presentposition[4],m_presentposition[5],m_"
-          "presentposition[6],m_presentposition[7],");
-  fprintf(crslave.ffp,
-          "m_presentvelocity[0],m_presentvelocity[1],m_presentvelocity[2],m_"
-          "presentvelocity[3],m_presentvelocity[4],m_presentvelocity[5],m_"
-          "presentvelocity[6],m_presentvelocity[7],");
-  fprintf(crslave.ffp,
-          "m_tau_res[0],m_tau_res[1],m_tau_res[2],m_tau_res[3],m_tau_res[4],m_"
-          "tau_res[5],m_tau_res[6],m_tau_res[7],");
+  // fprintf(crslave.ffp,
+  //         "time,s_presentposition[0],s_presentposition[1],s_presentposition[2],"
+  //         "s_presentposition[3],s_presentposition[4],s_presentposition[5],s_"
+  //         "presentposition[6],s_presentposition[7],");
+  // fprintf(crslave.ffp,
+  //         "s_presentvelocity[0],s_presentvelocity[1],s_presentvelocity[2],s_"
+  //         "presentvelocity[3],s_presentvelocity[4],s_presentvelocity[5],s_"
+  //         "presentvelocity[6],s_presentvelocity[7],");
+  // fprintf(crslave.ffp,
+  //         "s_tau_res[0],s_tau_res[1],s_tau_res[2],s_tau_res[3],s_tau_res[4],s_"
+  //         "tau_res[5],s_tau_res[6],s_tau_res[7],");
+  // fprintf(crslave.ffp,
+  //         "m_presentposition[0],m_presentposition[1],m_presentposition[2],m_"
+  //         "presentposition[3],m_presentposition[4],m_presentposition[5],m_"
+  //         "presentposition[6],m_presentposition[7],");
+  // fprintf(crslave.ffp,
+  //         "m_presentvelocity[0],m_presentvelocity[1],m_presentvelocity[2],m_"
+  //         "presentvelocity[3],m_presentvelocity[4],m_presentvelocity[5],m_"
+  //         "presentvelocity[6],m_presentvelocity[7],");
+  // fprintf(crslave.ffp,
+  //         "m_tau_res[0],m_tau_res[1],m_tau_res[2],m_tau_res[3],m_tau_res[4],m_"
+  //         "tau_res[5],m_tau_res[6],m_tau_res[7],");
+  fprintf(crslave.ffp, "time,");
+
+  for(int i = 0; i < 8; i++)
+    fprintf(crslave.ffp, "s_presentposition[%d],", i);
+  for(int i = 0; i < 8; i++)
+    fprintf(crslave.ffp, "s_presentvelocity[%d],", i);
+  for(int i = 0; i < 8; i++)
+    fprintf(crslave.ffp, "s_tau_res[%d],", i);
+
+  for(int i = 0; i < 8; i++)
+    fprintf(crslave.ffp, "m_presentposition[%d],", i);
+  for(int i = 0; i < 8; i++)
+    fprintf(crslave.ffp, "m_presentvelocity[%d],", i);
+  for(int i = 0; i < 8; i++)
+    fprintf(crslave.ffp, "m_tau_res[%d],", i);
+
+  for(int i = 0; i < 8; i++)
+    fprintf(crslave.ffp, "s_goal_torque[%d],", i);
   for(int i = 0; i < 8; i++)
     fprintf(crslave.ffp, "s_tau_dis[%d],", i);
   for(int i = 0; i < 8; i++)
@@ -152,6 +170,7 @@ void *slave_control(void *) {
     fprintf(crslave.ffp, "s_dob1[%d],", i);
   for(int i = 0; i < 8; i++)
     fprintf(crslave.ffp, "s_dob2[%d],", i);
+
   fprintf(crslave.ffp, "sleeptime,controltime\n");
 
   crslave.Readpresent_position(ID);
@@ -308,35 +327,63 @@ void *slave_control(void *) {
     /*******************************************************
      *    モーションデータをテキストに保存(Pモード)         *
      ********************************************************/
-    fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,", passtime,
-            crslave.present_position[0], crslave.present_position[1],
-            crslave.present_position[2], crslave.present_position[3],
-            crslave.present_position[4], crslave.present_position[5],
-            crslave.present_position[6], crslave.present_position[7]);
-    fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,",
-            crslave.d_theta_res[0], crslave.d_theta_res[1],
-            crslave.d_theta_res[2], crslave.d_theta_res[3],
-            crslave.d_theta_res[4], crslave.d_theta_res[5],
-            crslave.d_theta_res[6], crslave.d_theta_res[7]);
-    fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,", crslave.tau_res[0],
-            crslave.tau_res[1], crslave.tau_res[2], crslave.tau_res[3],
-            crslave.tau_res[4], crslave.tau_res[5], crslave.tau_res[6],
-            crslave.tau_res[7]);
-    fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,",
-            crslave.goal_position[0], crslave.goal_position[1],
-            crslave.goal_position[2], crslave.goal_position[3],
-            crslave.goal_position[4], crslave.goal_position[5],
-            crslave.goal_position[6], crslave.goal_position[7]);
-    fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,",
-            crslave.goal_velocity[0], crslave.goal_velocity[1],
-            crslave.goal_velocity[2], crslave.goal_velocity[3],
-            crslave.goal_velocity[4], crslave.goal_velocity[5],
-            crslave.goal_velocity[6], crslave.goal_velocity[7]);
-    fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,",
-            crslave.target_torque[0], crslave.target_torque[1],
-            crslave.target_torque[2], crslave.target_torque[3],
-            crslave.target_torque[4], crslave.target_torque[5],
-            crslave.target_torque[6], crslave.target_torque[7]);
+    // fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,", passtime,
+    //         crslave.present_position[0], crslave.present_position[1],
+    //         crslave.present_position[2], crslave.present_position[3],
+    //         crslave.present_position[4], crslave.present_position[5],
+    //         crslave.present_position[6], crslave.present_position[7]);
+    // fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,",
+    //         crslave.d_theta_res[0], crslave.d_theta_res[1],
+    //         crslave.d_theta_res[2], crslave.d_theta_res[3],
+    //         crslave.d_theta_res[4], crslave.d_theta_res[5],
+    //         crslave.d_theta_res[6], crslave.d_theta_res[7]);
+    // fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,", crslave.tau_res[0],
+    //         crslave.tau_res[1], crslave.tau_res[2], crslave.tau_res[3],
+    //         crslave.tau_res[4], crslave.tau_res[5], crslave.tau_res[6],
+    //         crslave.tau_res[7]);
+    // fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,",
+    //         crslave.goal_position[0], crslave.goal_position[1],
+    //         crslave.goal_position[2], crslave.goal_position[3],
+    //         crslave.goal_position[4], crslave.goal_position[5],
+    //         crslave.goal_position[6], crslave.goal_position[7]);
+    // fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,",
+    //         crslave.goal_velocity[0], crslave.goal_velocity[1],
+    //         crslave.goal_velocity[2], crslave.goal_velocity[3],
+    //         crslave.goal_velocity[4], crslave.goal_velocity[5],
+    //         crslave.goal_velocity[6], crslave.goal_velocity[7]);
+    // fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,",
+    //         crslave.target_torque[0], crslave.target_torque[1],
+    //         crslave.target_torque[2], crslave.target_torque[3],
+    //         crslave.target_torque[4], crslave.target_torque[5],
+    //         crslave.target_torque[6], crslave.target_torque[7]);
+    // for(int i = 0; i < 8; i++)
+    //   fprintf(crslave.ffp, "%lf,", crslave.goal_torque[i]);
+    // for(int i = 0; i < 8; i++)
+    //   fprintf(crslave.ffp, "%lf,", crslave.tau_dis[i]);
+    // for(int i = 0; i < 8; i++)
+    //   fprintf(crslave.ffp, "%lf,", crslave.dob0[i]);
+    // for(int i = 0; i < 8; i++)
+    //   fprintf(crslave.ffp, "%lf,", crslave.dob1[i]);
+    // for(int i = 0; i < 8; i++)
+    //   fprintf(crslave.ffp, "%lf,", crslave.dob2[i]);
+    fprintf(crslave.ffp, "%lf,", passtime);
+
+    for(int i = 0; i < 8; i++)
+      fprintf(crslave.ffp, "%lf,", crslave.present_position[i]);
+    for(int i = 0; i < 8; i++)
+      fprintf(crslave.ffp, "%lf,", crslave.d_theta_res[i]);
+    for(int i = 0; i < 8; i++)
+      fprintf(crslave.ffp, "%lf,", crslave.tau_res[i]);
+
+    for(int i = 0; i < 8; i++)
+      fprintf(crslave.ffp, "%lf,", crslave.goal_position[i]);
+    for(int i = 0; i < 8; i++)
+      fprintf(crslave.ffp, "%lf,", crslave.goal_velocity[i]);
+    for(int i = 0; i < 8; i++)
+      fprintf(crslave.ffp, "%lf,", crslave.target_torque[i]);
+      
+    for(int i = 0; i < 8; i++)
+      fprintf(crslave.ffp, "%lf,", crslave.goal_torque[i]);
     for(int i = 0; i < 8; i++)
       fprintf(crslave.ffp, "%lf,", crslave.tau_dis[i]);
     for(int i = 0; i < 8; i++)
@@ -345,7 +392,8 @@ void *slave_control(void *) {
       fprintf(crslave.ffp, "%lf,", crslave.dob1[i]);
     for(int i = 0; i < 8; i++)
       fprintf(crslave.ffp, "%lf,", crslave.dob2[i]);
-    
+
+
     // torque on
     crslave.setCranex7Torque(crslave.goal_torque, ID);
     // 秒単位の時間を取得
@@ -590,35 +638,50 @@ void *slave_control(void *) {
     /*******************************************************
      *    モーションデータをテキストに保存(Bモード)         *
      ********************************************************/
-    fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,", passtime,
-            crslave.present_position[0], crslave.present_position[1],
-            crslave.present_position[2], crslave.present_position[3],
-            crslave.present_position[4], crslave.present_position[5],
-            crslave.present_position[6], crslave.present_position[7]);
-    fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,",
-            crslave.d_theta_res[0], crslave.d_theta_res[1],
-            crslave.d_theta_res[2], crslave.d_theta_res[3],
-            crslave.d_theta_res[4], crslave.d_theta_res[5],
-            crslave.d_theta_res[6], crslave.d_theta_res[7]);
-    fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,", crslave.tau_res[0],
-            crslave.tau_res[1], crslave.tau_res[2], crslave.tau_res[3],
-            crslave.tau_res[4], crslave.tau_res[5], crslave.tau_res[6],
-            crslave.tau_res[7]);
-    fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,",
-            crslave.goal_position[0], crslave.goal_position[1],
-            crslave.goal_position[2], crslave.goal_position[3],
-            crslave.goal_position[4], crslave.goal_position[5],
-            crslave.goal_position[6], crslave.goal_position[7]);
-    fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,",
-            crslave.goal_velocity[0], crslave.goal_velocity[1],
-            crslave.goal_velocity[2], crslave.goal_velocity[3],
-            crslave.goal_velocity[4], crslave.goal_velocity[5],
-            crslave.goal_velocity[6], crslave.goal_velocity[7]);
-    fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,",
-            crslave.target_torque[0], crslave.target_torque[1],
-            crslave.target_torque[2], crslave.target_torque[3],
-            crslave.target_torque[4], crslave.target_torque[5],
-            crslave.target_torque[6], crslave.target_torque[7]);
+    // fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,", passtime,
+    //         crslave.present_position[0], crslave.present_position[1],
+    //         crslave.present_position[2], crslave.present_position[3],
+    //         crslave.present_position[4], crslave.present_position[5],
+    //         crslave.present_position[6], crslave.present_position[7]);
+    // fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,",
+    //         crslave.d_theta_res[0], crslave.d_theta_res[1],
+    //         crslave.d_theta_res[2], crslave.d_theta_res[3],
+    //         crslave.d_theta_res[4], crslave.d_theta_res[5],
+    //         crslave.d_theta_res[6], crslave.d_theta_res[7]);
+    // fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,", crslave.tau_res[0],
+    //         crslave.tau_res[1], crslave.tau_res[2], crslave.tau_res[3],
+    //         crslave.tau_res[4], crslave.tau_res[5], crslave.tau_res[6],
+    //         crslave.tau_res[7]);
+    // fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,",
+    //         crslave.goal_position[0], crslave.goal_position[1],
+    //         crslave.goal_position[2], crslave.goal_position[3],
+    //         crslave.goal_position[4], crslave.goal_position[5],
+    //         crslave.goal_position[6], crslave.goal_position[7]);
+    // fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,",
+    //         crslave.goal_velocity[0], crslave.goal_velocity[1],
+    //         crslave.goal_velocity[2], crslave.goal_velocity[3],
+    //         crslave.goal_velocity[4], crslave.goal_velocity[5],
+    //         crslave.goal_velocity[6], crslave.goal_velocity[7]);
+    // fprintf(crslave.ffp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,",
+    //         crslave.target_torque[0], crslave.target_torque[1],
+    //         crslave.target_torque[2], crslave.target_torque[3],
+    //         crslave.target_torque[4], crslave.target_torque[5],
+    //         crslave.target_torque[6], crslave.target_torque[7]);
+    fprintf(crslave.ffp, "%lf,", passtime);
+    for(int i = 0; i < 8; i++)
+      fprintf(crslave.ffp, "%lf,", crslave.present_position[i]);
+    for(int i = 0; i < 8; i++)
+      fprintf(crslave.ffp, "%lf,", crslave.d_theta_res[i]);
+    for(int i = 0; i < 8; i++)
+      fprintf(crslave.ffp, "%lf,", crslave.tau_res[i]);
+    for(int i = 0; i < 8; i++)
+      fprintf(crslave.ffp, "%lf,", crslave.goal_position[i]);
+    for(int i = 0; i < 8; i++)
+      fprintf(crslave.ffp, "%lf,", crslave.goal_velocity[i]);
+    for(int i = 0; i < 8; i++)
+      fprintf(crslave.ffp, "%lf,", crslave.target_torque[i]);
+    for(int i = 0; i < 8; i++)
+      fprintf(crslave.ffp, "%lf,", crslave.goal_torque[i]);
     for(int i = 0; i < 8; i++)
       fprintf(crslave.ffp, "%lf,", crslave.tau_dis[i]);
     for(int i = 0; i < 8; i++)
