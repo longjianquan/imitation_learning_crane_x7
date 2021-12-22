@@ -24,54 +24,60 @@
 //
 #include "crane.h"
 
+#include "control_params.h"
 #include "crane_x7_comm.h"
 #include "dynamixel_sdk.h"
-#include "params.h"
 
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /**
  * @brief コンストラクタ
  */
-CR7::CR7() {
-  portHandler = dynamixel::PortHandler::getPortHandler(DEVICENAME);
-  packetHandler = dynamixel::PacketHandler::getPacketHandler(PROTOCOL_VERSION);
-  groupBulkWrite = new dynamixel::GroupBulkWrite(portHandler, packetHandler);
-  groupBulkRead = new dynamixel::GroupBulkRead(portHandler, packetHandler);
+// CR7::CR7() {
+//   portHandler = dynamixel::PortHandler::getPortHandler(DEVICENAME);
+//   packetHandler =
+//   dynamixel::PacketHandler::getPacketHandler(PROTOCOL_VERSION);
+//   groupBulkWrite = new dynamixel::GroupBulkWrite(portHandler, packetHandler);
+//   groupBulkRead = new dynamixel::GroupBulkRead(portHandler, packetHandler);
 
-  dxl_comm_result = COMM_TX_FAIL;  // Communication result
-  dxl_addparam_result = false;     // addParam result
-  dxl_getdata_result = false;      // GetParam result
-  dxl_error = 0;                   // Dynamixel error
-  datareadflag = 0;
+//   dxl_comm_result = COMM_TX_FAIL;  // Communication result
+//   dxl_addparam_result = false;     // addParam result
+//   dxl_getdata_result = false;      // GetParam result
+//   dxl_error = 0;                   // Dynamixel error
+//   datareadflag = 0;
 
-  dxl_theta_res = {0};
-  dxl_present_velocity = {0};
-  dxl_present_torque = {0};
+//   dxl_theta_res = {0};
+//   dxl_present_velocity = {0};
+//   dxl_present_torque = {0};
 
-  for (int j = 0; j < JOINT_NUM; j++) {
-    theta_res[j] = 0;
-    present_velocity[j] = 0;
-    present_torque[j] = 0;
-    goal_current[j] = 0;
+//   for (int i = 0; i < JOINT_NUM; i++) {
+//     theta_res[i] = 0;
+//     present_velocity[i] = 0;
+//     present_torque[i] = 0;
+//     goal_current[i] = 0;
 
-    theta_ref[j] = 0;
-    omega_ref[j] = 0;
-    goal_torque[j] = 0;
-    tau_ref[j] = 0;
-    omega_res[j] = 0;
-    d_theta_temp[j] = 0;
-    tau_p[j] = 0;
-    tau_f[j] = 0;
-    tau_dis[j] = 0;
-    tau_res[j] = 0;
+//     theta_ref[i] = 0;
+//     omega_ref[i] = 0;
+//     goal_torque[i] = 0;
+//     tau_ref[i] = 0;
+//     omega_res[i] = 0;
+//     d_theta_temp[i] = 0;
+//     tau_p[i] = 0;
+//     tau_f[i] = 0;
+//     tau_dis[i] = 0;
+//     tau_res[i] = 0;
 
-    dob0[j] = 0;
-    dob1[j] = 0;
-    dob2[j] = 0;
-  }
-}
+//     dob0[i] = 0;
+//     dob1[i] = 0;
+//     dob2[i] = 0;
+//   }
+// }
 
+/**
+ * @brief コンストラクタ
+ * @param devicename デバイス名
+ * @param masterorslave マスターなら１　スレーブなら０
+ */
 CR7::CR7(const char *devicename, int masterorslave) {
   ms = masterorslave;
   portHandler = dynamixel::PortHandler::getPortHandler(devicename);
@@ -89,26 +95,26 @@ CR7::CR7(const char *devicename, int masterorslave) {
   dxl_present_velocity = {0};
   dxl_present_torque = {0};
 
-  for (int j = 0; j < JOINT_NUM; j++) {
-    theta_res[j] = 0;
-    present_velocity[j] = 0;
-    present_torque[j] = 0;
-    goal_current[j] = 0;
+  for (int i = 0; i < JOINT_NUM; i++) {
+    theta_res[i] = 0;
+    present_velocity[i] = 0;
+    present_torque[i] = 0;
+    goal_current[i] = 0;
 
-    theta_ref[j] = 0;
-    omega_ref[j] = 0;
-    tau_ref[j] = 0;
-    goal_torque[j] = 0;
-    omega_res[j] = 0;
-    d_theta_temp[j] = 0;
-    tau_p[j] = 0;
-    tau_f[j] = 0;
-    tau_dis[j] = 0;
-    tau_res[j] = 0;
+    theta_ref[i] = 0;
+    omega_ref[i] = 0;
+    tau_ref[i] = 0;
+    goal_torque[i] = 0;
+    omega_res[i] = 0;
+    d_theta_temp[i] = 0;
+    tau_p[i] = 0;
+    tau_f[i] = 0;
+    tau_dis[i] = 0;
+    tau_res[i] = 0;
 
-    dob0[j] = 0;
-    dob1[j] = 0;
-    dob2[j] = 0;
+    dob0[i] = 0;
+    dob1[i] = 0;
+    dob2[i] = 0;
   }
 
   /////////////////// csv //////////////////////
@@ -276,7 +282,7 @@ bool CR7::Set_port_baudrate() {
   }
 }
 
-int CR7::setCranex7Torque(double *torque_array, int ID[JOINT_NUM]) {
+int CR7::setCranex7Torque(double *torque_array) {
   for (int i = 0; i < JOINT_NUM2; i++) {
     if (i == XM540_W270_JOINT) {
       goal_current[i] =
@@ -300,14 +306,14 @@ int CR7::setCranex7Torque(double *torque_array, int ID[JOINT_NUM]) {
       }
     }
   }
-  for (int k = 0; k < JOINT_NUM2; k++) {
-    param_goal_current[0] = DXL_LOBYTE(DXL_LOWORD((goal_current[k])));
-    param_goal_current[1] = DXL_HIBYTE(DXL_LOWORD((goal_current[k])));
-    param_goal_current[2] = DXL_LOBYTE(DXL_HIWORD((goal_current[k])));
-    param_goal_current[3] = DXL_HIBYTE(DXL_HIWORD((goal_current[k])));
-    dxl_addparam_result =
-        groupBulkWrite->addParam(ID[k], GOAL_CURRENT_ADDRESS,
-                                 GOAL_CURRENT_DATA_LENGTH, param_goal_current);
+  for (int j = 0; j < JOINT_NUM2; j++) {
+    param_goal_current[0] = DXL_LOBYTE(DXL_LOWORD((goal_current[j])));
+    param_goal_current[1] = DXL_HIBYTE(DXL_LOWORD((goal_current[j])));
+    param_goal_current[2] = DXL_LOBYTE(DXL_HIWORD((goal_current[j])));
+    param_goal_current[3] = DXL_HIBYTE(DXL_HIWORD((goal_current[j])));
+    int ID = j + 2;
+    dxl_addparam_result = groupBulkWrite->addParam(
+        ID, GOAL_CURRENT_ADDRESS, GOAL_CURRENT_DATA_LENGTH, param_goal_current);
     if (dxl_addparam_result != true) printf("goal pose error!\n");
   }
   printf("\n");
@@ -597,5 +603,5 @@ void CR7::controller() {
   tau_res[1] = tau_dis[1] - M[0] * sin(theta_res[1]) + M[1] * sin(theta_3);
   tau_res[3] = tau_dis[3] + M[2] * sin(theta_3);
 
-  setCranex7Torque(goal_torque, ID);
+  setCranex7Torque(goal_torque);
 }

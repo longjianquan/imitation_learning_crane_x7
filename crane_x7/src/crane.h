@@ -127,7 +127,7 @@ class CR7 {
   int Readpresent_torque(int ID[JOINT_NUM]);
   // int getCranex7JointState();
 
-  int setCranex7Torque(double *torque_array, int ID[JOINT_NUM]);  //,FILE
+  int setCranex7Torque(double *torque_array);  //,FILE
   bool Setoperation(int Operationmode, int ID[JOINT_NUM]);
   // int positioncontrol(FILE *fp);
   // void *bilateralcontrol(void *);
