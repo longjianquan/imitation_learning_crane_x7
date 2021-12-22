@@ -30,14 +30,6 @@ int ttt = 0;
 static char ch = 'p';
 static double passtime = 0.0;
 
-// static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-
-// static double p_th_m_res[JOINT_NUM], p_dth_m_res[JOINT_NUM],
-//     p_ddth_m_res[JOINT_NUM];
-// static double p_th_s_res[JOINT_NUM], p_dth_s_res[JOINT_NUM],
-//     p_ddth_s_res[JOINT_NUM];
-// static double p_tau_m_res[JOINT_NUM], p_tau_s_res[JOINT_NUM];
-
 const char *devicename1 = "/dev/ttyUSB0";  //こっちがスレーブ
 const char *devicename2 = "/dev/ttyUSB1";  //こっちがマスター
 
@@ -93,27 +85,21 @@ void *crane_s_control(void *) {
     return NULL;
   }
   crane_s.Setoperation(POSITION_CONTROL_MODE, ID);
+
   // 全サーボのトルクをON
   crane_s.Enable_Dynamixel_Torque(ID);
+
   // 設定されているgoal positionに移動（1回目ー＞アームが横に向く）
   crane_s.Move_Theta_Ref(save_pose, ID, JOINT_MIN, JOINT_MAX);
-
-  // 初期位置を設定
-  // for (int i = 0; i < JOINT_NUM2; i++) {
-  //   crane_s.theta_ref[i] = goal_pose[i];
-  //   crane_s.omega_ref[i] = 0.0;
-  //   crane_s.tau_ref[i] = 0.0;
-  //   // p_th_s_res[i] = crane_s.theta_res[i];
-  //   // p_dth_s_res[i] = crane_s.omega_res[i];
-  //   // p_tau_s_res[i] = crane_s.tau_res[i];
-  // }
 
   sleep(5);
   // 設定されているgoal positionに移動（1回目ー＞アームが正面に向く）;
   crane_s.Move_Theta_Ref(goal_pose, ID, JOINT_MIN, JOINT_MAX);
   sleep(5);
+
   // 電源をOFFにしてから電流制御モードに移行
   crane_s.Disable_Dynamixel_Torque(ID);
+
   // 電流制御モード
   crane_s.Setoperation(CURRENT_CONTROL_MODE, ID);
   crane_s.Enable_Dynamixel_Torque(ID);
@@ -228,9 +214,6 @@ void *crane_s_control(void *) {
     // calculate input torque
     crane_s.position_control(goal_pose);
 
-    // set torque
-    // crane_s.setCranex7Torque(crane_s.goal_torque, ID);
-
     // 秒単位の時間を取得
     gettimeofday(&end_time_s, NULL);
     // (終了時間 - 開始時間) + (終了時間 - 開始時間) * 0.000,001
@@ -241,7 +224,6 @@ void *crane_s_control(void *) {
     // スリープ時間が0より下なら 0 にリセット
     if (sleep_time_s < 0) sleep_time_s = 0;
 
-    // fprintf(crane_s.ffp, "%ld,%lf\n", sleep_time_s, control_time_s);
     crane_s.write_csv(passtime, sleep_time_s, control_time_s);
 
     usleep(sleep_time_s);
@@ -406,33 +388,9 @@ void *crane_s_control(void *) {
       }
     }
 
-    // マスタ値を制御目標値にセット
-    // pthread_mutex_lock(&mutex);
-    // for (int i = 0; i < JOINT_NUM2; i++) {
-    //   if (i == 2) {
-    //     p_th_s_res[i] = crane_s.theta_res[i];
-    //     p_dth_s_res[i] = crane_s.omega_res[i];
-    //     p_tau_s_res[i] = crane_s.tau_res[i];
-    //     crane_s.theta_ref[i] = 3.14;
-    //     crane_s.omega_ref[i] = 0.0;
-    //     crane_s.tau_ref[i] = 0.0;
-    //   } else {
-    //     p_th_s_res[i] = crane_s.theta_res[i];
-    //     p_dth_s_res[i] = crane_s.omega_res[i];
-    //     p_tau_s_res[i] = crane_s.tau_res[i];
-    //     crane_s.theta_ref[i] = p_th_m_res[i];
-    //     crane_s.omega_ref[i] = p_dth_m_res[i];
-    //     crane_s.tau_ref[i] = p_tau_m_res[i];
-    //   }
-    // }
-    // pthread_mutex_unlock(&mutex);
-
     // calculate input torque
     crane_s.torque_control(crane_m.theta_res, crane_m.omega_res,
                            crane_m.tau_res);
-
-    // set torque
-    // crane_s.setCranex7Torque(crane_s.goal_torque, ID);
 
     if ((ttt % 10) == 0) printf("time: %lf\n", passtime);
 
@@ -447,7 +405,6 @@ void *crane_s_control(void *) {
 
     if (sleep_time_s < 0) sleep_time_s = 0;
 
-    // fprintf(crane_s.ffp, "%ld,%lf\n", sleep_time_s, control_time_s);
     crane_s.write_csv(passtime, sleep_time_s, control_time_s);
 
     usleep(sleep_time_s);
@@ -489,17 +446,10 @@ void *master_control(void *) {
   // 設定されているgoal positionに移動
   crane_m.Move_Theta_Ref(save_pose, ID, JOINT_MIN, JOINT_MAX);
 
-  // for (int i = 0; i < JOINT_NUM2; i++) {
-  //   crane_m.theta_ref[i] = goal_pose[i];
-  //   crane_m.omega_ref[i] = 0.0;
-  //   crane_m.tau_ref[i] = 0.0;
-  //   // p_th_m_res[i] = crane_m.theta_res[i];
-  //   // p_dth_m_res[i] = crane_m.omega_res[i];
-  //   // p_tau_m_res[i] = crane_m.tau_res[i];
-  // }
   sleep(5);
   crane_m.Move_Theta_Ref(goal_pose, ID, JOINT_MIN, JOINT_MAX);
   sleep(5);
+
   crane_m.Disable_Dynamixel_Torque(ID);
   crane_m.Setoperation(CURRENT_CONTROL_MODE, ID);
   crane_m.Enable_Dynamixel_Torque(ID);
@@ -522,9 +472,10 @@ void *master_control(void *) {
     fclose(crane_m.ffp);
     return NULL;
   }
-  for (int j = 0; j < JOINT_NUM2; j++) {
+
+  for (int j = 0; j < JOINT_NUM2; j++)
     crane_m.d_theta_temp[j] = crane_m.theta_res[j];
-  }
+
   /*********************************************************
             P MODE
   **********************************************************/
@@ -587,9 +538,6 @@ void *master_control(void *) {
     // calculate input torque
     crane_m.position_control(goal_pose);
 
-    // set torque
-    // crane_m.setCranex7Torque(crane_m.goal_torque, ID);
-
     /**********************************************************
       処理時間とループ時間からスリープ時間を割り出す(Pモード)
     ***********************************************************/
@@ -600,7 +548,6 @@ void *master_control(void *) {
 
     if (sleep_time_m < 0) sleep_time_m = 0;
 
-    // fprintf(crane_m.ffp, "%ld,%lf\n", sleep_time_m, control_time_m);
     crane_m.write_csv(passtime, sleep_time_m, control_time_m);
 
     usleep(sleep_time_m);
@@ -678,32 +625,9 @@ void *master_control(void *) {
       }
     }
 
-    // pthread_mutex_lock(&mutex);
-    // for (int i = 0; i < JOINT_NUM2; i++) {
-    //   if (i == 2) {
-    //     p_th_m_res[i] = crane_m.theta_res[i];
-    //     p_dth_m_res[i] = crane_m.omega_res[i];
-    //     p_tau_m_res[i] = crane_m.tau_res[i];
-    //     crane_m.theta_ref[i] = 3.14;
-    //     crane_m.omega_ref[i] = 0.0;
-    //     crane_m.tau_ref[i] = 0.0;
-    //   } else {
-    //     p_th_m_res[i] = crane_m.theta_res[i];
-    //     p_dth_m_res[i] = crane_m.omega_res[i];
-    //     p_tau_m_res[i] = crane_m.tau_res[i];
-    //     crane_m.theta_ref[i] = p_th_s_res[i];
-    //     crane_m.omega_ref[i] = p_dth_s_res[i];
-    //     crane_m.tau_ref[i] = p_tau_s_res[i];
-    //   }
-    // }
-    // pthread_mutex_unlock(&mutex);
-
     // calculate input torque
     crane_m.torque_control(crane_m.theta_res, crane_m.omega_res,
                            crane_m.tau_res);
-
-    // set torque
-    // crane_m.setCranex7Torque(crane_m.goal_torque, ID);
 
     /**********************************************************
       処理時間とループ時間からスリープ時間を割り出す(Bモード)
@@ -716,7 +640,6 @@ void *master_control(void *) {
       sleep_time_m = 0;
     }
 
-    // fprintf(crane_m.ffp, "%ld,%lf\n", sleep_time_m, control_time_m);
     crane_m.write_csv(passtime, sleep_time_m, control_time_m);
 
     usleep(sleep_time_m);
@@ -774,16 +697,7 @@ void *keyboard_check(void *) {
  */
 int main() {
   pthread_t master_thread, crane_s_thread, getch_thread;
-  // for (int i = 0; i < JOINT_NUM; i++) {
-  //   p_th_m_res[i] = 0.0;
-  //   p_dth_m_res[i] = 0.0;
-  //   p_ddth_m_res[i] = 0.0;
-  //   p_th_s_res[i] = 0.0;
-  //   p_dth_s_res[i] = 0.0;
-  //   p_ddth_s_res[i] = 0.0;
-  //   p_tau_m_res[i] = 0.0;
-  //   p_tau_s_res[i] = 0.0;
-  // }
+
   // マスター制御のスレッド設定
   if (pthread_create(&master_thread, NULL, &master_control, NULL) != 0) {
     fprintf(stderr, "cannot create control thread\n");

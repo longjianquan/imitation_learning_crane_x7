@@ -118,44 +118,45 @@ CR7::CR7(const char *devicename, int masterorslave) {
   }
 
   /////////////////// csv //////////////////////
+  int I = JOINT_NUM;
   if (ms == 0) {
     filename = "master.csv";
     ffp = fopen(filename.c_str(), "w");
 
     fprintf(ffp, "time,");
 
-    for (int i = 0; i < 8; i++) fprintf(ffp, "m_presentposition[%d],", i);
-    for (int i = 0; i < 8; i++) fprintf(ffp, "m_presentvelocity[%d],", i);
-    for (int i = 0; i < 8; i++) fprintf(ffp, "m_tau_res[%d],", i);
+    for (int i = 0; i < I; i++) fprintf(ffp, "m_presentposition[%d],", i);
+    for (int i = 0; i < I; i++) fprintf(ffp, "m_presentvelocity[%d],", i);
+    for (int i = 0; i < I; i++) fprintf(ffp, "m_tau_res[%d],", i);
 
-    for (int i = 0; i < 8; i++) fprintf(ffp, "s_presentposition[%d],", i);
-    for (int i = 0; i < 8; i++) fprintf(ffp, "s_presentvelocity[%d],", i);
-    for (int i = 0; i < 8; i++) fprintf(ffp, "s_tau_res[%d],", i);
+    for (int i = 0; i < I; i++) fprintf(ffp, "s_presentposition[%d],", i);
+    for (int i = 0; i < I; i++) fprintf(ffp, "s_presentvelocity[%d],", i);
+    for (int i = 0; i < I; i++) fprintf(ffp, "s_tau_res[%d],", i);
 
-    for (int i = 0; i < 8; i++) fprintf(ffp, "m_goal_torque[%d],", i);
-    for (int i = 0; i < 8; i++) fprintf(ffp, "m_tau_dis[%d],", i);
-    for (int i = 0; i < 8; i++) fprintf(ffp, "m_dob0[%d],", i);
-    for (int i = 0; i < 8; i++) fprintf(ffp, "m_dob1[%d],", i);
-    for (int i = 0; i < 8; i++) fprintf(ffp, "m_dob2[%d],", i);
+    for (int i = 0; i < I; i++) fprintf(ffp, "m_goal_torque[%d],", i);
+    for (int i = 0; i < I; i++) fprintf(ffp, "m_tau_dis[%d],", i);
+    for (int i = 0; i < I; i++) fprintf(ffp, "m_dob0[%d],", i);
+    for (int i = 0; i < I; i++) fprintf(ffp, "m_dob1[%d],", i);
+    for (int i = 0; i < I; i++) fprintf(ffp, "m_dob2[%d],", i);
   } else {
     filename = "slave.csv";
     ffp = fopen(filename.c_str(), "w");
 
     fprintf(ffp, "time,");
 
-    for (int i = 0; i < 8; i++) fprintf(ffp, "s_presentposition[%d],", i);
-    for (int i = 0; i < 8; i++) fprintf(ffp, "s_presentvelocity[%d],", i);
-    for (int i = 0; i < 8; i++) fprintf(ffp, "s_tau_res[%d],", i);
+    for (int i = 0; i < I; i++) fprintf(ffp, "s_presentposition[%d],", i);
+    for (int i = 0; i < I; i++) fprintf(ffp, "s_presentvelocity[%d],", i);
+    for (int i = 0; i < I; i++) fprintf(ffp, "s_tau_res[%d],", i);
 
-    for (int i = 0; i < 8; i++) fprintf(ffp, "m_presentposition[%d],", i);
-    for (int i = 0; i < 8; i++) fprintf(ffp, "m_presentvelocity[%d],", i);
-    for (int i = 0; i < 8; i++) fprintf(ffp, "m_tau_res[%d],", i);
+    for (int i = 0; i < I; i++) fprintf(ffp, "m_presentposition[%d],", i);
+    for (int i = 0; i < I; i++) fprintf(ffp, "m_presentvelocity[%d],", i);
+    for (int i = 0; i < I; i++) fprintf(ffp, "m_tau_res[%d],", i);
 
-    for (int i = 0; i < 8; i++) fprintf(ffp, "s_goal_torque[%d],", i);
-    for (int i = 0; i < 8; i++) fprintf(ffp, "s_tau_dis[%d],", i);
-    for (int i = 0; i < 8; i++) fprintf(ffp, "s_dob0[%d],", i);
-    for (int i = 0; i < 8; i++) fprintf(ffp, "s_dob1[%d],", i);
-    for (int i = 0; i < 8; i++) fprintf(ffp, "s_dob2[%d],", i);
+    for (int i = 0; i < I; i++) fprintf(ffp, "s_goal_torque[%d],", i);
+    for (int i = 0; i < I; i++) fprintf(ffp, "s_tau_dis[%d],", i);
+    for (int i = 0; i < I; i++) fprintf(ffp, "s_dob0[%d],", i);
+    for (int i = 0; i < I; i++) fprintf(ffp, "s_dob1[%d],", i);
+    for (int i = 0; i < I; i++) fprintf(ffp, "s_dob2[%d],", i);
   }
 
   fprintf(ffp, "sleeptime,controltime\n");
@@ -506,19 +507,20 @@ void CR7::Close_port() {
 void CR7::write_csv(double time, long sleep_time, double control_time) {
   fprintf(ffp, "%lf,", time);
 
-  for (int i = 0; i < 8; i++) fprintf(ffp, "%lf,", theta_res[i]);
-  for (int i = 0; i < 8; i++) fprintf(ffp, "%lf,", omega_res[i]);
-  for (int i = 0; i < 8; i++) fprintf(ffp, "%lf,", tau_res[i]);
+  int I = JOINT_NUM;
+  for (int i = 0; i < I; i++) fprintf(ffp, "%lf,", theta_res[i]);
+  for (int i = 0; i < I; i++) fprintf(ffp, "%lf,", omega_res[i]);
+  for (int i = 0; i < I; i++) fprintf(ffp, "%lf,", tau_res[i]);
 
-  for (int i = 0; i < 8; i++) fprintf(ffp, "%lf,", theta_ref[i]);
-  for (int i = 0; i < 8; i++) fprintf(ffp, "%lf,", omega_ref[i]);
-  for (int i = 0; i < 8; i++) fprintf(ffp, "%lf,", tau_ref[i]);
+  for (int i = 0; i < I; i++) fprintf(ffp, "%lf,", theta_ref[i]);
+  for (int i = 0; i < I; i++) fprintf(ffp, "%lf,", omega_ref[i]);
+  for (int i = 0; i < I; i++) fprintf(ffp, "%lf,", tau_ref[i]);
 
-  for (int i = 0; i < 8; i++) fprintf(ffp, "%lf,", goal_torque[i]);
-  for (int i = 0; i < 8; i++) fprintf(ffp, "%lf,", tau_dis[i]);
-  for (int i = 0; i < 8; i++) fprintf(ffp, "%lf,", dob0[i]);
-  for (int i = 0; i < 8; i++) fprintf(ffp, "%lf,", dob1[i]);
-  for (int i = 0; i < 8; i++) fprintf(ffp, "%lf,", dob2[i]);
+  for (int i = 0; i < I; i++) fprintf(ffp, "%lf,", goal_torque[i]);
+  for (int i = 0; i < I; i++) fprintf(ffp, "%lf,", tau_dis[i]);
+  for (int i = 0; i < I; i++) fprintf(ffp, "%lf,", dob0[i]);
+  for (int i = 0; i < I; i++) fprintf(ffp, "%lf,", dob1[i]);
+  for (int i = 0; i < I; i++) fprintf(ffp, "%lf,", dob2[i]);
 
   fprintf(ffp, "%ld,%lf\n", sleep_time, control_time);
 }
