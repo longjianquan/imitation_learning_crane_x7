@@ -586,6 +586,8 @@ void CR7::controller() {
 
     // torque control
     tau_f[i] = Kf[i] / 2.0 * (-tau_ref[i] - tau_res[i]);
+
+    // input torque
     goal_torque[i] = tau_p[i] + tau_f[i] + tau_dis[i];
 
     // DOB
@@ -593,14 +595,13 @@ void CR7::controller() {
     dob1[i] = g[i] * (dob0[i] - dob2[i]);
     double ts = 0.002;
     dob2[i] += dob1[i] * ts;
-
-    //外乱トルクの算出
     tau_dis[i] = dob2[i] - g[i] * J[i] * omega_res[i];
 
+    // friction
     tau_res[i] = tau_dis[i] - D[i] * omega_res[i];
   }
 
-  // 重力補償
+  // gravity
   double theta_3 = theta_res[1] + theta_res[3];
   tau_res[1] = tau_dis[1] - M[0] * sin(theta_res[1]) + M[1] * sin(theta_3);
   tau_res[3] = tau_dis[3] + M[2] * sin(theta_3);
