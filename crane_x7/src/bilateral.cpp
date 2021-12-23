@@ -35,8 +35,8 @@ void *bilateral_control(CR7 *crane_s, CR7 *crane_m, bool slave) {
   static double ts = 0.002;
   static double time = 0.0;
 
-  if (!crane_s->Set_port_baudrate()) {     // 通信レートの設定
-    crane_s->Close_port();                 // 通信ポートを閉じる
+  if (!crane_s->Set_port_baudrate()) {  // 通信レートの設定
+    crane_s->Close_port();              // 通信ポートを閉じる
     return NULL;
   }
 
@@ -55,23 +55,16 @@ void *bilateral_control(CR7 *crane_s, CR7 *crane_m, bool slave) {
   crane_s->Setoperation(CURRENT_CONTROL_MODE, ID);
   crane_s->Enable_Dynamixel_Torque(ID);
 
-  // position observation
-  crane_s->Readtheta_res(ID);
-  for (int j = 0; j < JOINT_NUM2; j++) {
+  // initialize
+  crane_s->Readpresent_position(ID);
+  for (int j = 0; j < JOINT_NUM2; j++)
     crane_s->d_theta_temp[j] = crane_s->theta_res[j];
-  }
 
   while (true) {
     gettimeofday(&start_time_s, NULL);
 
     // position observation
-    crane_s->Readtheta_res(ID);
-
-    if ((crane_s->theta_res[0] == 0.0) || (crane_s->theta_res[7] == 0.0)) {
-      cout << (slave ? "slave" : "master");
-      cout << "読み込み怪しいので終了" << endl;
-      break;
-    }
+    crane_s->Readpresent_position(ID);
 
     // calculate velocity
     for (int i = 0; i < JOINT_NUM2; i++) {
@@ -80,8 +73,14 @@ void *bilateral_control(CR7 *crane_s, CR7 *crane_m, bool slave) {
       crane_s->d_theta_temp[i] += crane_s->omega_res[i] * ts;
     }
 
-    // speed limit
+    // forced termination
     for (int i = 0; i < JOINT_NUM2; i++) {
+      if (crane_s->theta_res[i] == 0.0) {
+        cout << (slave ? "slave" : "master");
+        cout << "読み込み怪しいので終了" << endl;
+        finishFlag = true;
+      }
+
       if (fabs(crane_s->omega_res[i]) >= LIMIT_SPEED[i]) {
         cout << (slave ? "slave" : "master");
         printf("の軸%dが速いので終了: %lf [rad/s]\n", i, crane_s->omega_res[i]);
@@ -94,12 +93,12 @@ void *bilateral_control(CR7 *crane_s, CR7 *crane_m, bool slave) {
     if (ch == 'p') {
       crane_s->position_control(goal_pose);
 
-    // bilateral control
+      // bilateral control
     } else if (ch == 'b') {
-      crane_s->force_control(
-        crane_m->theta_res, crane_m->omega_res, crane_m->tau_res);
-    
-    // finish
+      crane_s->force_control(crane_m->theta_res, crane_m->omega_res,
+                             crane_m->tau_res);
+
+      // finish
     } else {
       break;
     }
@@ -121,8 +120,8 @@ void *bilateral_control(CR7 *crane_s, CR7 *crane_m, bool slave) {
 
     // time count
     if (ch == 'b') {
-        time += ts;
-        count++;
+      time += ts;
+      count++;
     }
   }
 
@@ -156,15 +155,20 @@ void *keyboard_check(void *) {
 
   while (ch != 'q') {
     key = getch();
-    /************************
-     *     B MODE
-     *************************/
+
+    // P MODE
+    if (key == 'p') {
+      ch = 'p';
+      printf("MODE P ACTIVE\n");
+    }
+
+    // B MODE
     if (key == 'b') {
       ch = 'b';
+      printf("MODE B ACTIVE\n");
     }
-    /************************
-     *     Q MODE
-     *************************/
+
+    // Q MODE
     else if (key == 'q') {
       ch = 'q';
       printf("MODE Q ACTIVE\n");

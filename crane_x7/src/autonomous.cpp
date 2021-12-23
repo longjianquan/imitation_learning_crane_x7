@@ -94,7 +94,7 @@ void *autonomous_control(void *) {
   crane_s.Setoperation(CURRENT_CONTROL_MODE, ID);
   crane_s.Enable_Dynamixel_Torque(ID);
 
-  crane_s.Readtheta_res(ID);
+  crane_s.Readpresent_position(ID);
   for (int j = 0; j < JOINT_NUM2; j++)
     crane_s.d_theta_temp[j] = crane_s.theta_res[j];
 
@@ -102,12 +102,7 @@ void *autonomous_control(void *) {
     gettimeofday(&start_time_s, NULL);
 
     // position observation
-    crane_s.Readtheta_res(ID);
-
-    if ((crane_s.theta_res[0] == 0.0) || (crane_s.theta_res[7] == 0.0)) {
-      cout << "読み込み怪しいので終了" << endl;
-      break;
-    }
+    crane_s.Readpresent_position(ID);
 
     // calculate velocity
     for (int i = 0; i < JOINT_NUM2; i++) {
@@ -116,8 +111,13 @@ void *autonomous_control(void *) {
       crane_s.d_theta_temp[i] += crane_s.omega_res[i] * ts;
     }
 
-    // speed limit
+    // forced termination
     for (int i = 0; i < JOINT_NUM2; i++) {
+      if (crane_s.theta_res[i] == 0.0) {
+        cout << "読み込み怪しいので終了" << endl;
+        finishFlag = true;
+      }
+
       if (fabs(crane_s.omega_res[i]) >= LIMIT_SPEED[i]) {
         printf("軸%dが速いので終了: %lf [rad/s]\n", i, crane_s.omega_res[i]);
         finishFlag = true;
@@ -125,13 +125,11 @@ void *autonomous_control(void *) {
     }
     if (finishFlag) break;
 
-    // calculate input torque
-    // crane_s.position_control(goal_pose);
     // move to initial pose
     if (ch == 'p') {
       crane_s.position_control(goal_pose);
 
-    // bilateral control
+      // autonomous control
     } else if (ch == 'b') {
       memcpy(&fdw, &fds, sizeof(fd_set));
       memcpy(&fdr, &fds, sizeof(fd_set));
@@ -204,21 +202,11 @@ void *autonomous_control(void *) {
           theta_ref[i] = a[i];
           omega_ref[i] = a[i + JOINT_NUM2 * 1];
           tau_ref[i] = a[i + JOINT_NUM2 * 2];
-        //   if (i == 2) {
-        //     theta_ref[i] = 3.14;
-        //     omega_ref[i] = 0.0;
-        //     tau_ref[i] = 0.0;
-        //   } else if (i < 2) {
-        //   } else {
-        //     theta_ref[i] = a[i - 1];
-        //     omega_ref[i] = a[i - 1 + (JOINT_NUM2 - 1) * 1];
-        //     tau_ref[i] = a[i - 1 + (JOINT_NUM2 - 1) * 2];
-        //   }
         }
         crane_s.force_control(theta_ref, omega_ref, tau_ref);
       }
-    
-    // finish
+
+      // finish
     } else {
       break;
     }
@@ -243,7 +231,7 @@ void *autonomous_control(void *) {
 
     // time count
     if (ch == 'b') {
-        time += ts;
+      time += ts;
     }
     count++;
   }

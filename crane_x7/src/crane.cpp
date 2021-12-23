@@ -28,8 +28,6 @@
 #include "crane_x7_comm.h"
 #include "dynamixel_sdk.h"
 
-// static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-
 /**
  * @brief コンストラクタ
  */
@@ -78,7 +76,8 @@
  * @param devicename デバイス名
  * @param masterorslave マスターなら１　スレーブなら０
  */
-CR7::CR7(const char *devicename, double initial_pose[JOINT_NUM], int masterorslave) {
+CR7::CR7(const char *devicename, double initial_pose[JOINT_NUM],
+         int masterorslave) {
   ms = masterorslave;
   portHandler = dynamixel::PortHandler::getPortHandler(devicename);
   packetHandler = dynamixel::PacketHandler::getPacketHandler(PROTOCOL_VERSION);
@@ -104,11 +103,13 @@ CR7::CR7(const char *devicename, double initial_pose[JOINT_NUM], int masterorsla
     theta_ref[i] = initial_pose[i];
     omega_ref[i] = 0;
     tau_ref[i] = 0;
+
     goal_torque[i] = 0;
+
     omega_res[i] = 0;
     d_theta_temp[i] = 0;
-    tau_p[i] = 0;
-    tau_f[i] = 0;
+    // tau_p[i] = 0;
+    // tau_f[i] = 0;
     tau_dis[i] = 0;
     tau_res[i] = 0;
 
@@ -147,16 +148,16 @@ CR7::CR7(const char *devicename, double initial_pose[JOINT_NUM], int masterorsla
   //////////////////////////////////////////////
 }
 
-int CR7::Readtheta_res(int ID[JOINT_NUM]) {
+int CR7::Readpresent_position(int ID[JOINT_NUM]) {
   //読み込みのデータを設定(現在角度)
   for (int i = 0; i < JOINT_NUM2; i++) {
-    dxl_addparam_result = groupBulkRead->addParam(
-        ID[i], THETA_RES_ADDRESS, THETA_RES_DATA_LENGTH);
+    dxl_addparam_result = groupBulkRead->addParam(ID[i], THETA_RES_ADDRESS,
+                                                  THETA_RES_DATA_LENGTH);
   }
 
   // Bulkread present position
   dxl_comm_result = groupBulkRead->txRxPacket();  //返信データの読み込み
-  if (dxl_comm_result != COMM_SUCCESS) printf(" discommect \n");
+  if (dxl_comm_result != COMM_SUCCESS) printf(" disconnect \n");
 
   // Check if groupbulkread data of Dynamixel is available
   for (int i = 0; i < JOINT_NUM2; i++) {  //返信データが利用できるか確認
@@ -168,9 +169,9 @@ int CR7::Readtheta_res(int ID[JOINT_NUM]) {
   }
 
   for (int i = 0; i < JOINT_NUM2; i++) {
-    dxl_theta_res = groupBulkRead->getData(
-        ID[i], THETA_RES_ADDRESS,
-        THETA_RES_DATA_LENGTH);  //返信データから指定のデータを読む
+    //返信データから指定のデータを読む
+    dxl_theta_res =
+        groupBulkRead->getData(ID[i], THETA_RES_ADDRESS, THETA_RES_DATA_LENGTH);
     theta_res[i] = dxlvalue2rad(dxl_theta_res);
   }
   return 0;
@@ -178,12 +179,13 @@ int CR7::Readtheta_res(int ID[JOINT_NUM]) {
 
 int CR7::Readpresent_velocity(int ID[JOINT_NUM]) {
   for (int i = 0; i < JOINT_NUM2; i++) {
+    //読み込みのデータを設定(現在角度)
     dxl_addparam_result = groupBulkRead->addParam(
-        ID[i], PRESENT_VELOCITY_ADDRESS,
-        PRESENT_VELOCITY_DATA_LENGTH);  //読み込みのデータを設定(現在角度)
+        ID[i], PRESENT_VELOCITY_ADDRESS, PRESENT_VELOCITY_DATA_LENGTH);
+
     // Bulkread present position
     dxl_comm_result = groupBulkRead->txRxPacket();  //返信データの読み込み
-    if (dxl_comm_result != COMM_SUCCESS) printf(" discommect \n");
+    if (dxl_comm_result != COMM_SUCCESS) printf(" disconnect \n");
 
     // Check if groupbulkread data of Dynamixel is available
     // //返信データが利用できるか確認
@@ -192,9 +194,9 @@ int CR7::Readpresent_velocity(int ID[JOINT_NUM]) {
     if (dxl_getdata_result != true)
       printf(" ID[%d] : groupBulkRead getdata failed\n", ID[i]);
 
+    //返信データから指定のデータを読む
     dxl_present_velocity = groupBulkRead->getData(
-        ID[i], PRESENT_VELOCITY_ADDRESS,
-        PRESENT_VELOCITY_DATA_LENGTH);  //返信データから指定のデータを読む
+        ID[i], PRESENT_VELOCITY_ADDRESS, PRESENT_VELOCITY_DATA_LENGTH);
     present_velocity[i] = dxlvalue2angularvel(dxl_present_velocity);
   }
   return 0;
@@ -202,13 +204,13 @@ int CR7::Readpresent_velocity(int ID[JOINT_NUM]) {
 
 int CR7::Readpresent_torque(int ID[JOINT_NUM]) {
   for (int i = 0; i < JOINT_NUM2; i++) {
+    //読み込みのデータを設定(現在角度)
     dxl_addparam_result = groupBulkRead->addParam(
-        ID[i], PRESENT_CURRENT_ADDRESS,
-        PRESENT_CURRENT_DATA_LENGTH);  //読み込みのデータを設定(現在角度)
+        ID[i], PRESENT_CURRENT_ADDRESS, PRESENT_CURRENT_DATA_LENGTH);
 
     // Bulkread present position
     dxl_comm_result = groupBulkRead->txRxPacket();  //返信データの読み込み
-    if (dxl_comm_result != COMM_SUCCESS) printf(" discommect \n");
+    if (dxl_comm_result != COMM_SUCCESS) printf(" disconnect \n");
 
     // Check if groupbulkread data of Dynamixel is available
     // //返信データが利用できるか確認
@@ -217,9 +219,9 @@ int CR7::Readpresent_torque(int ID[JOINT_NUM]) {
     if (dxl_getdata_result != true)
       printf(" ID[%d] : groupBulkRead getdata failed\n", ID[i]);
 
-    dxl_present_torque = groupBulkRead->getData(
-        ID[i], PRESENT_CURRENT_ADDRESS,
-        PRESENT_CURRENT_DATA_LENGTH);  //返信データから指定のデータを読む
+    //返信データから指定のデータを読む
+    dxl_present_torque = groupBulkRead->getData(ID[i], PRESENT_CURRENT_ADDRESS,
+                                                PRESENT_CURRENT_DATA_LENGTH);
 
     if (i == XM540_W270_JOINT) {
       present_torque[i] =
@@ -238,7 +240,6 @@ int CR7::Readpresent_torque(int ID[JOINT_NUM]) {
  * @return	bool 1:成功　0:失敗
  */
 bool CR7::Open_port() {
-  // Open port
   if (portHandler->openPort()) {
     printf("Succeeded to open the port!\n");
     return 1;
@@ -321,6 +322,7 @@ bool CR7::Setoperation(int Operationmode, int ID[JOINT_NUM]) {
     //該当IDのサーボのトルク管理のアドレスにOFFを書き込む
     dxl_comm_result = packetHandler->write1ByteTxRx(
         portHandler, ID[i], OPERATING_MODE_ADDRESS, Operationmode, &dxl_error);
+
   // Bulkwrite operationmode
   dxl_comm_result = groupBulkWrite->txPacket();
   if (dxl_comm_result != COMM_SUCCESS)
@@ -343,23 +345,26 @@ void CR7::Enable_Dynamixel_Torque(int ID[JOINT_NUM]) {
     dxl_comm_result = packetHandler->write1ByteTxRx(
         portHandler, ID[i], TORQUE_ENABLE_ADDRESS, TORQUE_ENABLE,
         &dxl_error);  //該当IDのサーボのトルク管理のアドレスにONを書き込む
-    param_value[0] = DXL_LOBYTE(DXL_LOWORD(
-        DXL_PROFILE_VELOCITY));  //設定した回転速度を通信パケット用にデータを分ける
+
+    //設定した回転速度を通信パケット用にデータを分ける
+    param_value[0] = DXL_LOBYTE(DXL_LOWORD(DXL_PROFILE_VELOCITY));
     param_value[1] = DXL_HIBYTE(DXL_LOWORD(DXL_PROFILE_VELOCITY));
     param_value[2] = DXL_LOBYTE(DXL_HIWORD(DXL_PROFILE_VELOCITY));
     param_value[3] = DXL_HIBYTE(DXL_HIWORD(DXL_PROFILE_VELOCITY));
-    dxl_addparam_result = groupBulkWrite->addParam(
-        ID[i], PROFILE_VELOCITY_ADDRESS, PROFILE_VELOCITY_DATA_LENGTH,
-        param_value);  //書き込み用のパケットに作成したデータを追加
-    printf("[ ID : %d : ",
-           ID[i]);  //各サーボが送信したパケットどうりに動いているか確認
+
+    //書き込み用のパケットに作成したデータを追加
+    dxl_addparam_result =
+        groupBulkWrite->addParam(ID[i], PROFILE_VELOCITY_ADDRESS,
+                                 PROFILE_VELOCITY_DATA_LENGTH, param_value);
+
+    //各サーボが送信したパケットどうりに動いているか確認
+    printf("[ ID : %d : ", ID[i]);
     if (dxl_comm_result != COMM_SUCCESS)
-      printf(" result : %s",
-             packetHandler->getTxRxResult(
-                 dxl_comm_result));  //正しいコマンドが送信されているか確認
+      //正しいコマンドが送信されているか確認
+      printf(" result : %s", packetHandler->getTxRxResult(dxl_comm_result));
     else if (dxl_error != 0)
-      printf(" error : %s", packetHandler->getRxPacketError(
-                                dxl_error));  //エラーが発生した場合のコメント
+      //エラーが発生した場合のコメント
+      printf(" error : %s", packetHandler->getRxPacketError(dxl_error));
     else
       printf(" successfully connected ");  //正常にサーボがトルクON
     printf(" ]\n");
@@ -406,16 +411,15 @@ void CR7::Move_Theta_Ref(double *goal_pose, int ID[JOINT_NUM],
   // Move target goal position
 
   for (int i = 0; i < JOINT_NUM2; i++) {
-    printf("[ ID[%d] : %lf ]", ID[i],
-           goal_pose[i]);  //指定したサーボとデータの確認
+    //指定したサーボとデータの確認
+    printf("[ ID[%d] : %lf ]", ID[i], goal_pose[i]);
+
+    //動作角度外の角度が入力された場合
     if ((JOINT_MIN[i] > rad2dxlvalue(goal_pose[i])) ||
-        (JOINT_MAX[i] <
-         rad2dxlvalue(goal_pose[i]))) {  //動作角度外の角度が入力された場合
+        (JOINT_MAX[i] < rad2dxlvalue(goal_pose[i]))) {
       printf("over range!\n");
       sleep(200);
-      printf(
-          "リーチングで変な値が入ったので200秒停止してプログラムを終了します。"
-          "\n");
+      printf("プログラムを終了します");
       printf("停止ボタンを押して、CRANEを安全な姿勢にしてCtrl+c !!\n");
       sleep(4);
       printf("あと4秒\n");
@@ -424,15 +428,15 @@ void CR7::Move_Theta_Ref(double *goal_pose, int ID[JOINT_NUM],
       exit(1);
     }
 
-    param_theta_ref[0] = DXL_LOBYTE(
-        DXL_LOWORD(rad2dxlvalue(goal_pose[i])));  //通信用にデータを分ける
+    //通信用にデータを分ける
+    param_theta_ref[0] = DXL_LOBYTE(DXL_LOWORD(rad2dxlvalue(goal_pose[i])));
     param_theta_ref[1] = DXL_HIBYTE(DXL_LOWORD(rad2dxlvalue(goal_pose[i])));
     param_theta_ref[2] = DXL_LOBYTE(DXL_HIWORD(rad2dxlvalue(goal_pose[i])));
     param_theta_ref[3] = DXL_HIBYTE(DXL_HIWORD(rad2dxlvalue(goal_pose[i])));
 
+    //書き込み用のパケットに追加
     dxl_addparam_result = groupBulkWrite->addParam(
-        ID[i], THETA_REF_ADDRESS, THETA_REF_DATA_LENGTH,
-        param_theta_ref);  //書き込み用のパケットに追加
+        ID[i], THETA_REF_ADDRESS, THETA_REF_DATA_LENGTH, param_theta_ref);
     if (dxl_addparam_result != true) printf("goal pose error!\n");
   }
   printf("\n");
@@ -454,15 +458,15 @@ void CR7::Move_Offset_Position(int ID[JOINT_NUM]) {
   // Move offset position
 
   for (int i = 0; i < JOINT_NUM2 - 2; i++) {
-    param_theta_ref[0] = DXL_LOBYTE(
-        DXL_LOWORD(DXL_CENTER_POSITION_VALUE));  //通信用にデータを分ける
+    //通信用にデータを分ける
+    param_theta_ref[0] = DXL_LOBYTE(DXL_LOWORD(DXL_CENTER_POSITION_VALUE));
     param_theta_ref[1] = DXL_HIBYTE(DXL_LOWORD(DXL_CENTER_POSITION_VALUE));
     param_theta_ref[2] = DXL_LOBYTE(DXL_HIWORD(DXL_CENTER_POSITION_VALUE));
     param_theta_ref[3] = DXL_HIBYTE(DXL_HIWORD(DXL_CENTER_POSITION_VALUE));
 
+    //書き込み用のパケットに追加
     dxl_addparam_result = groupBulkWrite->addParam(
-        ID[i], THETA_REF_ADDRESS, THETA_REF_DATA_LENGTH,
-        param_theta_ref);  //書き込み用のパケットに追加
+        ID[i], THETA_REF_ADDRESS, THETA_REF_DATA_LENGTH, param_theta_ref);
   }
   if (dxl_addparam_result != true) printf("offset error!\n");
 
@@ -480,7 +484,6 @@ void CR7::Move_Offset_Position(int ID[JOINT_NUM]) {
  * @brief	通信ポートを閉じる
  */
 void CR7::Close_port() {
-  // Close port
   portHandler->closePort();
   printf("port close and exit program\n");
 }
@@ -515,7 +518,6 @@ void CR7::write_csv(double time, long sleep_time, double control_time) {
  * @brief  position control
  */
 void CR7::position_control(double input_theta_ref[JOINT_NUM]) {
-  // pthread_mutex_lock(&mutex);
   for (int i = 0; i < JOINT_NUM; i++) {
     // set target value
     theta_ref[i] = input_theta_ref[i];
@@ -529,7 +531,6 @@ void CR7::position_control(double input_theta_ref[JOINT_NUM]) {
       tau_ref[i] = 0.0;
     }
   }
-  // pthread_mutex_unlock(&mutex);
 
   controller();
 }
@@ -541,7 +542,6 @@ void CR7::position_control(double input_theta_ref[JOINT_NUM]) {
 void CR7::force_control(double input_theta_ref[JOINT_NUM],
                         double input_omega_ref[JOINT_NUM],
                         double input_tau_ref[JOINT_NUM]) {
-  // pthread_mutex_lock(&mutex);
   for (int i = 0; i < JOINT_NUM; i++) {
     // set target value
     theta_ref[i] = input_theta_ref[i];
@@ -553,9 +553,8 @@ void CR7::force_control(double input_theta_ref[JOINT_NUM],
       theta_ref[i] = 3.14;
       omega_ref[i] = 0.0;
       tau_ref[i] = 0.0;
-    } 
+    }
   }
-  // pthread_mutex_unlock(&mutex);
 
   controller();
 }
@@ -567,15 +566,16 @@ void CR7::force_control(double input_theta_ref[JOINT_NUM],
 void CR7::controller() {
   for (int i = 0; i < JOINT_NUM; i++) {
     // position control
-    tau_p[i] = J[i] / 2.0 *
-               (Kp[i] * (theta_ref[i] - theta_res[i]) +
-                Kd[i] * (omega_ref[i] - omega_res[i]));
+    double tau_p = J[i] / 2.0 * Kp[i] * (theta_ref[i] - theta_res[i]);
 
-    // torque control
-    tau_f[i] = Kf[i] / 2.0 * (-tau_ref[i] - tau_res[i]);
+    // velocity control
+    double tau_v = J[i] / 2.0 * Kd[i] * (omega_ref[i] - omega_res[i]);
+
+    // force control
+    double tau_f = Kf[i] / 2.0 * (-tau_ref[i] - tau_res[i]);
 
     // input torque
-    goal_torque[i] = tau_p[i] + tau_f[i] + tau_dis[i];
+    goal_torque[i] = tau_p + tau_v + tau_f + tau_dis[i];
 
     // DOB
     dob0[i] = goal_torque[i] + g[i] * J[i] * omega_res[i];
