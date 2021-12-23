@@ -164,10 +164,10 @@ CR7::CR7(const char *devicename, int masterorslave) {
 }
 
 int CR7::Readtheta_res(int ID[JOINT_NUM]) {
+  //読み込みのデータを設定(現在角度)
   for (int i = 0; i < JOINT_NUM2; i++) {
     dxl_addparam_result = groupBulkRead->addParam(
-        ID[i], THETA_RES_ADDRESS,
-        THETA_RES_DATA_LENGTH);  //読み込みのデータを設定(現在角度)
+        ID[i], THETA_RES_ADDRESS, THETA_RES_DATA_LENGTH);
   }
 
   // Bulkread present position
@@ -182,6 +182,7 @@ int CR7::Readtheta_res(int ID[JOINT_NUM]) {
       printf(" ID[%d] : groupBulkRead getdata failed\n", ID[i]);
     }
   }
+
   for (int i = 0; i < JOINT_NUM2; i++) {
     dxl_theta_res = groupBulkRead->getData(
         ID[i], THETA_RES_ADDRESS,
@@ -531,14 +532,15 @@ void CR7::write_csv(double time, long sleep_time, double control_time) {
  */
 void CR7::position_control(double theta_ref[JOINT_NUM]) {
   pthread_mutex_lock(&mutex);
-  for (int i = 0; i < JOINT_NUM2; i++) {
+  for (int i = 0; i < JOINT_NUM; i++) {
     // set target value
+    theta_ref[i] = theta_ref[i];
+    omega_ref[i] = 0.0;
+    tau_ref[i] = 0.0;
+
+    // disable joint 2
     if (i == 2) {
       theta_ref[i] = 3.14;
-      omega_ref[i] = 0.0;
-      tau_ref[i] = 0.0;
-    } else {
-      theta_ref[i] = theta_ref[i];
       omega_ref[i] = 0.0;
       tau_ref[i] = 0.0;
     }
@@ -556,17 +558,18 @@ void CR7::torque_control(double theta_ref[JOINT_NUM],
                          double omega_ref[JOINT_NUM],
                          double tau_ref[JOINT_NUM]) {
   pthread_mutex_lock(&mutex);
-  for (int i = 0; i < JOINT_NUM2; i++) {
+  for (int i = 0; i < JOINT_NUM; i++) {
     // set target value
+    theta_ref[i] = theta_ref[i];
+    omega_ref[i] = omega_ref[i];
+    tau_ref[i] = tau_ref[i];
+
+    // disable joint 2
     if (i == 2) {
       theta_ref[i] = 3.14;
       omega_ref[i] = 0.0;
       tau_ref[i] = 0.0;
-    } else {
-      theta_ref[i] = theta_ref[i];
-      omega_ref[i] = omega_ref[i];
-      tau_ref[i] = tau_ref[i];
-    }
+    } 
   }
   pthread_mutex_unlock(&mutex);
 
@@ -578,7 +581,7 @@ void CR7::torque_control(double theta_ref[JOINT_NUM],
  * @brief position and force controller
  */
 void CR7::controller() {
-  for (int i = 0; i < JOINT_NUM2; i++) {
+  for (int i = 0; i < JOINT_NUM; i++) {
     // position control
     tau_p[i] = J[i] / 2.0 *
                (Kp[i] * (theta_ref[i] - theta_res[i]) +

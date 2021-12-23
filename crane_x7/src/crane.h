@@ -73,9 +73,9 @@ class CR7 {
   bool dxl_getdata_result;   // GetParam result
   uint8_t dxl_error;         // Dynamixel error
 
-  uint8_t param_theta_ref[4];  //通信パケット用に変換したtheta_refの変数
-  uint8_t param_goal_current[4];  //通信パケット用に変換したtheta_refの変数
-  uint8_t param_value[4];  //通信パケット用に変換したvalueの変数
+  uint8_t param_theta_ref[4];       //通信パケット用に変換したtheta_refの変数
+  uint8_t param_goal_current[4];    //通信パケット用に変換したtheta_refの変数
+  uint8_t param_value[4];           //通信パケット用に変換したvalueの変数
 
   int32_t dxl_theta_res;            //サーボの現在位置取得用の変数
   int16_t dxl_present_velocity;     //サーボの現在位置取得用の変数
