@@ -42,13 +42,13 @@ void *autonomous_control(void *) {
   const char *devicename1 = "/dev/ttyUSB0";
 
   // socket communication
-  double a[21];
+  double a[24];
   struct sockaddr_in addr;
 
   char rbuf[4096];
 
   int l;
-  int ret;
+  // int ret;
   bool sendf = true;
   char *tp;
   fd_set fds, fdw, fdr;
@@ -139,7 +139,7 @@ void *autonomous_control(void *) {
       // はじめから6秒経つまで通信はとりあえず行わないようにしている
       // socket
       if (time >= 2.0) {
-        ret = select(sock + 1, &fdr, &fdw, NULL, NULL);
+        // ret = select(sock + 1, &fdr, &fdw, NULL, NULL);
 
         if (count % rnn_ts == 0) {
           if (FD_ISSET(sock, &fdw) && sendf == true) {
@@ -195,30 +195,25 @@ void *autonomous_control(void *) {
 
       // 4.2     通信始めてからLSTMがなれるまでマージンとってる
       if (time <= 4.3) {
-        // for (int i = 0; i < JOINT_NUM2; i++) {
-        //   theta_ref[i] = goal_pose[i];
-        //   omega_ref[i] = 0.0;
-        //   tau_ref[i] = 0.0;
-        // }
         crane_s.position_control(goal_pose);
       } else {
         double theta_ref[JOINT_NUM2] = {0.0};
         double omega_ref[JOINT_NUM2] = {0.0};
         double tau_ref[JOINT_NUM2] = {0.0};
         for (int i = 0; i < JOINT_NUM2; i++) {
-          if (i == 2) {
-            theta_ref[i] = 3.14;
-            omega_ref[i] = 0.0;
-            tau_ref[i] = 0.0;
-          } else if (i < 2) {
-            theta_ref[i] = a[i];
-            omega_ref[i] = a[i + (JOINT_NUM2 - 1) * 1];
-            tau_ref[i] = a[i + (JOINT_NUM2 - 1) * 2];
-          } else {
-            theta_ref[i] = a[i - 1];
-            omega_ref[i] = a[i - 1 + (JOINT_NUM2 - 1) * 1];
-            tau_ref[i] = a[i - 1 + (JOINT_NUM2 - 1) * 2];
-          }
+          theta_ref[i] = a[i];
+          omega_ref[i] = a[i + JOINT_NUM2 * 1];
+          tau_ref[i] = a[i + JOINT_NUM2 * 2];
+        //   if (i == 2) {
+        //     theta_ref[i] = 3.14;
+        //     omega_ref[i] = 0.0;
+        //     tau_ref[i] = 0.0;
+        //   } else if (i < 2) {
+        //   } else {
+        //     theta_ref[i] = a[i - 1];
+        //     omega_ref[i] = a[i - 1 + (JOINT_NUM2 - 1) * 1];
+        //     tau_ref[i] = a[i - 1 + (JOINT_NUM2 - 1) * 2];
+        //   }
         }
         crane_s.force_control(theta_ref, omega_ref, tau_ref);
       }
@@ -252,184 +247,6 @@ void *autonomous_control(void *) {
     }
     count++;
   }
-
-  // if (ch != 'b') {
-  //   crane_s.Disable_Dynamixel_Torque(ID);
-  //   crane_s.Setoperation(POSITION_CONTROL_MODE, ID);
-  //   crane_s.Enable_Dynamixel_Torque(ID);
-  //   crane_s.Move_Theta_Ref(save_pose, ID, JOINT_MIN, JOINT_MAX);
-  //   sleep(5);
-  //   crane_s.Move_Theta_Ref(finish_pose, ID, JOINT_MIN, JOINT_MAX);
-  //   sleep(5);
-  //   dprintf(sock, "%s", "**");
-  //   close(sock);
-  //   crane_s.Disable_Dynamixel_Torque(ID);
-  //   crane_s.Close_port();
-  //   fclose(crane_s.ffp);
-  //   return NULL;
-  // }
-
-  // while (ch == 'b') {  //データ取得の開始
-
-  //   gettimeofday(&start_time_s, NULL);
-  //   crane_s.datareadflag = 0;
-
-  //   for (int i = 0; i < JOINT_NUM2; i++) {
-  //     crane_s.dxl_addparam_result = crane_s.groupBulkRead->addParam(
-  //         ID[i], THETA_RES_ADDRESS,
-  //         THETA_RES_DATA_LENGTH);  //読み込みのデータを設定(現在角度)
-  //   }
-
-  //   // Bulkread present position
-  //   crane_s.dxl_comm_result =
-  //       crane_s.groupBulkRead->txRxPacket();  //返信データの読み込み
-  //   if (crane_s.dxl_comm_result != COMM_SUCCESS) printf(" discommect \n");
-  //   // Check if groupbulkread data of Dynamixel is available
-  //   for (int i = 0; i < JOINT_NUM2; i++) {  //返信データが利用できるか確認
-  //     crane_s.dxl_getdata_result = crane_s.groupBulkRead->isAvailable(
-  //         ID[i], THETA_RES_ADDRESS, THETA_RES_DATA_LENGTH);
-  //     if (crane_s.dxl_getdata_result != true) {
-  //       crane_s.datareadflag++;
-  //     }
-  //   }
-  //   if (crane_s.datareadflag == 0) {
-  //     for (int i = 0; i < JOINT_NUM2; i++) {
-  //       crane_s.dxl_theta_res = crane_s.groupBulkRead->getData(
-  //           ID[i], THETA_RES_ADDRESS,
-  //           THETA_RES_DATA_LENGTH);  //返信データから指定のデータを読む
-  //       crane_s.theta_res[i] = dxlvalue2rad(crane_s.dxl_theta_res);
-  //     }
-  //   }
-
-  //   for (int i = 0; i < JOINT_NUM2; i++) {
-  //     crane_s.omega_res[i] =
-  //         (crane_s.theta_res[i] - crane_s.d_theta_temp[i]) * g[i];
-  //     crane_s.d_theta_temp[i] += crane_s.omega_res[i] * ts;
-  //   }
-
-  //   for (int i = 0; i < JOINT_NUM2; i++) {
-  //     if (fabs(crane_s.omega_res[i]) >= LIMIT_SPEED[i]) {
-  //       crane_s.Disable_Dynamixel_Torque(ID);
-  //       crane_s.Setoperation(POSITION_CONTROL_MODE, ID);
-  //       crane_s.Enable_Dynamixel_Torque(ID);
-  //       crane_s.Move_Theta_Ref(save_pose, ID, JOINT_MIN, JOINT_MAX);
-  //       sleep(5);
-  //       printf("crslaveの軸%dが速いので終了\n", i);
-  //       crane_s.Move_Theta_Ref(finish_pose, ID, JOINT_MIN, JOINT_MAX);
-  //       sleep(5);
-  //       dprintf(sock, "%s", "**");
-  //       close(sock);
-  //       crane_s.Disable_Dynamixel_Torque(ID);
-  //       crane_s.Close_port();
-  //       fclose(crane_s.ffp);
-  //       return NULL;
-  //     }
-  //   }
-
-  //   memcpy(&fdw, &fds, sizeof(fd_set));
-  //   memcpy(&fdr, &fds, sizeof(fd_set));
-
-  //   // はじめから6秒経つまで通信はとりあえず行わないようにしている
-  //   // socket
-  //   if (passtime >= 2.0) {
-  //     ret = select(sock + 1, &fdr, &fdw, NULL, NULL);
-
-  //     if (t1 % rnn_ts == 0) {
-  //       if (FD_ISSET(sock, &fdw) && sendf == true) {
-  //         int I = JOINT_NUM;
-  //         for (int i = 0; i < I; i++)
-  //           dprintf(sock, "%5.4f ", crane_s.theta_res[i]);
-  //         for (int i = 0; i < I; i++)
-  //           dprintf(sock, "%5.4f ", crane_s.omega_res[i]);
-  //         for (int i = 0; i < I; i++)
-  //           dprintf(sock, "%5.4f ", crane_s.tau_res[i]);
-  //         dprintf(sock, "%5.4f ", passtime);
-
-  //         // C++→pythonに送ったものを表示して確認
-  //         printf("send\n");
-  //         printf("\ntheta_res: ");
-  //         for (int i = 0; i < I; i++) printf("%5.4f ", crane_s.theta_res[i]);
-  //         printf("\nomega_res: ");
-  //         for (int i = 0; i < I; i++) printf("%5.4f ", crane_s.omega_res[i]);
-  //         printf("\ntau_res: ");
-  //         for (int i = 0; i < I; i++) printf("%5.4f ", crane_s.tau_res[i]);
-  //         printf("passtime: %5.4f\n\n\n", passtime);
-  //         sendf = false;
-  //       }
-  //     } else if ((t1 + 1) % rnn_ts == 0) {
-  //       if (FD_ISSET(sock, &fdr) && sendf == false) {
-  //         l = recv(sock, rbuf, sizeof(rbuf), 0);
-  //         *(rbuf + l) = 0;
-
-  //         printf("-> %s\n", rbuf);
-  //         sendf = true;
-  //         tp = strtok(rbuf, ",");
-
-  //         if (tp == NULL) {
-  //           cout << "break2だよ\n" << endl;
-  //           break;
-  //         }
-
-  //         for (int l = 0; l < 21; l++) {
-  //           a[l] = atof(tp);
-  //           printf("a[%d] = %5.4f\n", l, a[l]);
-  //           tp = strtok(NULL, ",");
-  //         }
-  //         printf("受け取った\n");
-  //       }
-  //     }
-  //   }
-
-  //   // 4.2     通信始めてからLSTMがなれるまでマージンとってる
-  //   double theta_ref[JOINT_NUM2] = {0.0};
-  //   double omega_ref[JOINT_NUM2] = {0.0};
-  //   double tau_ref[JOINT_NUM2] = {0.0};
-  //   if (passtime <= 4.3) {
-  //     for (int i = 0; i < JOINT_NUM2; i++) {
-  //       theta_ref[i] = goal_pose[i];
-  //       omega_ref[i] = 0.0;
-  //       tau_ref[i] = 0.0;
-  //     }
-  //   } else {
-  //     for (int i = 0; i < JOINT_NUM2; i++) {
-  //       if (i == 2) {
-  //         theta_ref[i] = 3.14;
-  //         omega_ref[i] = 0.0;
-  //         tau_ref[i] = 0.0;
-  //       } else if (i < 2) {
-  //         theta_ref[i] = a[i];
-  //         omega_ref[i] = a[i + (JOINT_NUM2 - 1) * 1];
-  //         tau_ref[i] = a[i + (JOINT_NUM2 - 1) * 2];
-  //       } else {
-  //         theta_ref[i] = a[i - 1];
-  //         omega_ref[i] = a[i - 1 + (JOINT_NUM2 - 1) * 1];
-  //         tau_ref[i] = a[i - 1 + (JOINT_NUM2 - 1) * 2];
-  //       }
-  //     }
-  //   }
-
-  //   // calculate input torque
-  //   crane_s.torque_control(theta_ref, omega_ref, tau_ref);
-
-  //   // calculate sleep time
-  //   gettimeofday(&end_time_s, NULL);
-  //   control_time_s = (end_time_s.tv_sec - start_time_s.tv_sec +
-  //                     (end_time_s.tv_usec - start_time_s.tv_usec) * 0.000001);
-  //   sleep_time_s = LOOPTIME - (long)(control_time_s * 1000000.0);
-  //   if (sleep_time_s < 0) sleep_time_s = 0;
-
-  //   // write current state to csv
-  //   crane_s.write_csv(passtime, sleep_time_s, control_time_s);
-
-  //   usleep(sleep_time_s);
-
-  //   // time count
-  //   passtime += ts;
-  //   t1++;
-
-  //   // print
-  //   printf("time: %lf\n", passtime);
-  // }
 
   // position control mode
   crane_s.Disable_Dynamixel_Torque(ID);
