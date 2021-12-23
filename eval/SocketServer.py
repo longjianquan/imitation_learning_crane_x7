@@ -21,7 +21,7 @@ class SocketServer():
         print('Waiting for connection...')
         self.clientSocket, address = self.socket.accept()
         print(f'Connection from {address} has been established!')
-        self.clientSocket.send(f'Connected to {host}:{port}'.encode('utf-8'))
+        # self.clientSocket.send(f'Connected to {host}:{port}'.encode('utf-8'))
 
     def standby(self, callback: callable(str)):
         try:

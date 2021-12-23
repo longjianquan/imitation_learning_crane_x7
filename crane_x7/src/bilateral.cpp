@@ -66,7 +66,6 @@ void *bilateral_control(CR7 *crane_s, CR7 *crane_m, bool slave) {
 
     // position observation
     crane_s->Readtheta_res(ID);
-    // crane_m.Readtheta_res(ID);
 
     if ((crane_s->theta_res[0] == 0.0) || (crane_s->theta_res[7] == 0.0)) {
       cout << (slave ? "slave" : "master");
@@ -97,13 +96,6 @@ void *bilateral_control(CR7 *crane_s, CR7 *crane_m, bool slave) {
 
     // bilateral control
     } else if (ch == 'b') {
-      // crane_s->position_control(goal_pose);
-
-      // cout << "force control" << endl;
-      // cout << (slave ? "slave" : "master") << endl;
-      // for (int i = 0; i < JOINT_NUM2; i++) {
-      //   printf("%lf, %lf\n", crane_s->theta_res[i], crane_m->theta_res[i]);
-      // }
       crane_s->force_control(
         crane_m->theta_res, crane_m->omega_res, crane_m->tau_res);
     
@@ -119,7 +111,6 @@ void *bilateral_control(CR7 *crane_s, CR7 *crane_m, bool slave) {
     gettimeofday(&end_time_s, NULL);
     control_time_s = (end_time_s.tv_sec - start_time_s.tv_sec +
                       (end_time_s.tv_usec - start_time_s.tv_usec) * 0.000001);
-    // スリープ時間 = ループ周期(2000[us]=2[ms]) - 制御時間 * 1,000,000.0
     sleep_time_s = LOOPTIME - (long)(control_time_s * 1000000.0);
     if (sleep_time_s < 0) sleep_time_s = 0;
 
@@ -135,7 +126,7 @@ void *bilateral_control(CR7 *crane_s, CR7 *crane_m, bool slave) {
     }
   }
 
-  // poosition control mode
+  // position control mode
   crane_s->Disable_Dynamixel_Torque(ID);
   crane_s->Setoperation(POSITION_CONTROL_MODE, ID);
   crane_s->Enable_Dynamixel_Torque(ID);

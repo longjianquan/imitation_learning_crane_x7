@@ -138,7 +138,7 @@ class AE_LSTM_Server(SocketServer):
 
     def NN_callback(self, msg: str) -> str:
         # return f'receive "{msg}"'
-        data = np.fromstring(msg, dtype=np.float32 , sep=' ')
+        data = np.fromstring(msg, dtype=np.float32 , sep=',')
         # state_dim = 21
         # state = data[:self.input_dim]
         # state = np.tile(data[:state_dim], 2)
