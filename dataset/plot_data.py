@@ -12,16 +12,18 @@ def main(data_path: str):
 
     # data shaping
     col_names_s = []
-    col_names_s += [f's_presentposition[{i}]' for i in range(8)]
-    col_names_s += [f's_presentvelocity[{i}]' for i in range(8)]
-    col_names_s += [f's_tau_res[{i}]' for i in range(8)]
+    col_names_s += [f'theta_res[{i}]' for i in range(8)]
+    col_names_s += [f'omega_res[{i}]' for i in range(8)]
+    col_names_s += [f'tau_res[{i}]' for i in range(8)]
     col_names_m = []
-    col_names_m += [f'm_presentposition[{i}]' for i in range(8)]
-    col_names_m += [f'm_presentvelocity[{i}]' for i in range(8)]
-    col_names_m += [f'm_tau_res[{i}]' for i in range(8)]
-    df = df[df.index > 4.0]
+    col_names_m += [f'theta_ref[{i}]' for i in range(8)]
+    col_names_m += [f'omega_ref[{i}]' for i in range(8)]
+    col_names_m += [f'tau_ref[{i}]' for i in range(8)]
+    
+    # df = df[df.index > 4.0]
     # df = df[df.index < 10.0 + 4.0]
-    df = df[::20]
+    # df = df[::20]
+
     print(df.head())
     print(df.tail())
     df_s = df[col_names_s]

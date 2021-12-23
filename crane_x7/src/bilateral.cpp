@@ -22,10 +22,10 @@ static char ch = 'p';
 
 const char *devicename1 = "/dev/ttyUSB0";  // slave
 const char *devicename2 = "/dev/ttyUSB1";  // master
-CR7 crane_s(devicename1, SLAVE);
-CR7 crane_m(devicename2, MASTER);
+CR7 crane_s(devicename1, goal_pose, SLAVE);
+CR7 crane_m(devicename2, goal_pose, MASTER);
 
-void *bilateral_control(CR7 crane_s, CR7 crane_m, bool slave) {
+void *bilateral_control(CR7 *crane_s, CR7 *crane_m, bool slave) {
   double control_time_s;
   long sleep_time_s;
   struct timeval start_time_s;
@@ -33,71 +33,59 @@ void *bilateral_control(CR7 crane_s, CR7 crane_m, bool slave) {
   bool finishFlag = false;
   int count = 0;
   static double ts = 0.002;
-  static double passtime = 0.0;
+  static double time = 0.0;
 
-  if (!crane_s.Set_port_baudrate()) {     // 通信レートの設定
-    crane_s.Close_port();                 // 通信ポートを閉じる
+  if (!crane_s->Set_port_baudrate()) {     // 通信レートの設定
+    crane_s->Close_port();                 // 通信ポートを閉じる
     return NULL;
   }
 
   // position control mode
-  crane_s.Setoperation(POSITION_CONTROL_MODE, ID);
-  crane_s.Enable_Dynamixel_Torque(ID);
+  crane_s->Setoperation(POSITION_CONTROL_MODE, ID);
+  crane_s->Enable_Dynamixel_Torque(ID);
 
   // move to initial pose
-  crane_s.Move_Theta_Ref(save_pose, ID, JOINT_MIN, JOINT_MAX);
+  crane_s->Move_Theta_Ref(save_pose, ID, JOINT_MIN, JOINT_MAX);
   sleep(5);
-  crane_s.Move_Theta_Ref(goal_pose, ID, JOINT_MIN, JOINT_MAX);
+  crane_s->Move_Theta_Ref(goal_pose, ID, JOINT_MIN, JOINT_MAX);
   sleep(5);
-
-  // 初期位置を設定
-  for (int i = 0; i < JOINT_NUM2; i++) {
-    crane_s.theta_ref[i] = goal_pose[i];
-    crane_s.omega_ref[i] = 0.0;
-    crane_s.tau_ref[i] = 0.0;
-  }
 
   // current control mode
-  crane_s.Disable_Dynamixel_Torque(ID);
-  crane_s.Setoperation(CURRENT_CONTROL_MODE, ID);
-  crane_s.Enable_Dynamixel_Torque(ID);
+  crane_s->Disable_Dynamixel_Torque(ID);
+  crane_s->Setoperation(CURRENT_CONTROL_MODE, ID);
+  crane_s->Enable_Dynamixel_Torque(ID);
 
   // position observation
-  crane_s.Readtheta_res(ID);
+  crane_s->Readtheta_res(ID);
   for (int j = 0; j < JOINT_NUM2; j++) {
-    crane_s.d_theta_temp[j] = crane_s.theta_res[j];
+    crane_s->d_theta_temp[j] = crane_s->theta_res[j];
   }
 
   while (true) {
     gettimeofday(&start_time_s, NULL);
 
     // position observation
-    crane_s.Readtheta_res(ID);
+    crane_s->Readtheta_res(ID);
+    // crane_m.Readtheta_res(ID);
 
-    if ((crane_s.theta_res[0] == 0.0) || (crane_s.theta_res[7] == 0.0)) {
-      if (slave) {
-        printf("slave読み込み怪しいので終了\n");
-      } else {
-        printf("master読み込み怪しいので終了\n");
-      }
+    if ((crane_s->theta_res[0] == 0.0) || (crane_s->theta_res[7] == 0.0)) {
+      cout << (slave ? "slave" : "master");
+      cout << "読み込み怪しいので終了" << endl;
       break;
     }
 
     // calculate velocity
     for (int i = 0; i < JOINT_NUM2; i++) {
-      crane_s.omega_res[i] =
-          (crane_s.theta_res[i] - crane_s.d_theta_temp[i]) * g[i];
-      crane_s.d_theta_temp[i] += crane_s.omega_res[i] * ts;
+      crane_s->omega_res[i] =
+          (crane_s->theta_res[i] - crane_s->d_theta_temp[i]) * g[i];
+      crane_s->d_theta_temp[i] += crane_s->omega_res[i] * ts;
     }
 
     // speed limit
     for (int i = 0; i < JOINT_NUM2; i++) {
-      if (fabs(crane_s.omega_res[i]) >= LIMIT_SPEED[i]) {
-        if (slave) {
-          printf("slaveの軸%dが速いので終了: %lf\n", i, crane_s.omega_res[i]);
-        } else {
-          printf("masterの軸%dが速いので終了: %lf\n", i, crane_s.omega_res[i]);
-        }
+      if (fabs(crane_s->omega_res[i]) >= LIMIT_SPEED[i]) {
+        cout << (slave ? "slave" : "master");
+        printf("の軸%dが速いので終了: %lf [rad/s]\n", i, crane_s->omega_res[i]);
         finishFlag = true;
       }
     }
@@ -105,12 +93,19 @@ void *bilateral_control(CR7 crane_s, CR7 crane_m, bool slave) {
 
     // move to initial pose
     if (ch == 'p') {
-      crane_s.position_control(goal_pose);
+      crane_s->position_control(goal_pose);
 
     // bilateral control
     } else if (ch == 'b') {
-      crane_s.torque_control(
-        crane_m.theta_res, crane_m.omega_res, crane_m.tau_res);
+      // crane_s->position_control(goal_pose);
+
+      // cout << "force control" << endl;
+      // cout << (slave ? "slave" : "master") << endl;
+      // for (int i = 0; i < JOINT_NUM2; i++) {
+      //   printf("%lf, %lf\n", crane_s->theta_res[i], crane_m->theta_res[i]);
+      // }
+      crane_s->force_control(
+        crane_m->theta_res, crane_m->omega_res, crane_m->tau_res);
     
     // finish
     } else {
@@ -118,7 +113,7 @@ void *bilateral_control(CR7 crane_s, CR7 crane_m, bool slave) {
     }
 
     // print
-    if (slave && (count % 10) == 0) printf("mode: %c  time: %lf\n", ch, passtime);
+    if (slave && (count % 10) == 0) printf("mode: %c  time: %lf\n", ch, time);
 
     // calculate sleep time
     gettimeofday(&end_time_s, NULL);
@@ -129,40 +124,40 @@ void *bilateral_control(CR7 crane_s, CR7 crane_m, bool slave) {
     if (sleep_time_s < 0) sleep_time_s = 0;
 
     // write current state to csv
-    crane_s.write_csv(passtime, sleep_time_s, control_time_s);
+    crane_s->write_csv(time, sleep_time_s, control_time_s);
 
     usleep(sleep_time_s);
 
     // time count
     if (ch == 'b') {
-        passtime += ts;
+        time += ts;
         count++;
     }
   }
 
   // poosition control mode
-  crane_s.Disable_Dynamixel_Torque(ID);
-  crane_s.Setoperation(POSITION_CONTROL_MODE, ID);
-  crane_s.Enable_Dynamixel_Torque(ID);
+  crane_s->Disable_Dynamixel_Torque(ID);
+  crane_s->Setoperation(POSITION_CONTROL_MODE, ID);
+  crane_s->Enable_Dynamixel_Torque(ID);
 
   // move to finish pose
-  crane_s.Move_Theta_Ref(save_pose, ID, JOINT_MIN, JOINT_MAX);
+  crane_s->Move_Theta_Ref(save_pose, ID, JOINT_MIN, JOINT_MAX);
   sleep(5);
-  crane_s.Move_Theta_Ref(finish_pose, ID, JOINT_MIN, JOINT_MAX);
+  crane_s->Move_Theta_Ref(finish_pose, ID, JOINT_MIN, JOINT_MAX);
   sleep(5);
 
-  crane_s.Disable_Dynamixel_Torque(ID);
-  crane_s.Close_port();
-  fclose(crane_s.ffp);
+  crane_s->Disable_Dynamixel_Torque(ID);
+  crane_s->Close_port();
+  fclose(crane_s->ffp);
   return NULL;
 }
 
 void *slave_control(void *) {
-  return bilateral_control(crane_s, crane_m, true);
+  return bilateral_control(&crane_s, &crane_m, true);
 }
 
 void *master_control(void *) {
-  return bilateral_control(crane_m, crane_s, false);
+  return bilateral_control(&crane_m, &crane_s, false);
 }
 
 void *keyboard_check(void *) {

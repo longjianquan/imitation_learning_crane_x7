@@ -62,7 +62,7 @@ class CR7 {
   dynamixel::GroupBulkRead *groupBulkRead;
 
   CR7();  //コンストラクタ
-  CR7(const char *devicename, int masterorslave);
+  CR7(const char *devicename, double initial_pose[JOINT_NUM], int masterorslave);
   ~CR7() { printf("finish CR7\n"); }
 
   int ms;
@@ -133,7 +133,7 @@ class CR7 {
   // void *bilateralcontrol(void *);
   void write_csv(double time, long sleep_time, double control_time);
   void position_control(double theta_ref[JOINT_NUM]);
-  void torque_control(double theta_ref[JOINT_NUM], double omega_ref[JOINT_NUM],
+  void force_control(double theta_ref[JOINT_NUM], double omega_ref[JOINT_NUM],
                       double tau_ref[JOINT_NUM]);
   void controller();
 };

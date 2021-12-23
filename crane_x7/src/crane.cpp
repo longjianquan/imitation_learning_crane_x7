@@ -28,7 +28,7 @@
 #include "crane_x7_comm.h"
 #include "dynamixel_sdk.h"
 
-static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+// static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /**
  * @brief コンストラクタ
@@ -78,7 +78,7 @@ static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
  * @param devicename デバイス名
  * @param masterorslave マスターなら１　スレーブなら０
  */
-CR7::CR7(const char *devicename, int masterorslave) {
+CR7::CR7(const char *devicename, double initial_pose[JOINT_NUM], int masterorslave) {
   ms = masterorslave;
   portHandler = dynamixel::PortHandler::getPortHandler(devicename);
   packetHandler = dynamixel::PacketHandler::getPacketHandler(PROTOCOL_VERSION);
@@ -101,7 +101,7 @@ CR7::CR7(const char *devicename, int masterorslave) {
     present_torque[i] = 0;
     goal_current[i] = 0;
 
-    theta_ref[i] = 0;
+    theta_ref[i] = initial_pose[i];
     omega_ref[i] = 0;
     tau_ref[i] = 0;
     goal_torque[i] = 0;
@@ -118,46 +118,30 @@ CR7::CR7(const char *devicename, int masterorslave) {
   }
 
   /////////////////// csv //////////////////////
-  int I = JOINT_NUM;
   if (ms == 0) {
     filename = "master.csv";
-    ffp = fopen(filename.c_str(), "w");
-
-    fprintf(ffp, "time,");
-
-    for (int i = 0; i < I; i++) fprintf(ffp, "m_presentposition[%d],", i);
-    for (int i = 0; i < I; i++) fprintf(ffp, "m_presentvelocity[%d],", i);
-    for (int i = 0; i < I; i++) fprintf(ffp, "m_tau_res[%d],", i);
-
-    for (int i = 0; i < I; i++) fprintf(ffp, "s_presentposition[%d],", i);
-    for (int i = 0; i < I; i++) fprintf(ffp, "s_presentvelocity[%d],", i);
-    for (int i = 0; i < I; i++) fprintf(ffp, "s_tau_res[%d],", i);
-
-    for (int i = 0; i < I; i++) fprintf(ffp, "m_goal_torque[%d],", i);
-    for (int i = 0; i < I; i++) fprintf(ffp, "m_tau_dis[%d],", i);
-    for (int i = 0; i < I; i++) fprintf(ffp, "m_dob0[%d],", i);
-    for (int i = 0; i < I; i++) fprintf(ffp, "m_dob1[%d],", i);
-    for (int i = 0; i < I; i++) fprintf(ffp, "m_dob2[%d],", i);
   } else {
     filename = "slave.csv";
-    ffp = fopen(filename.c_str(), "w");
-
-    fprintf(ffp, "time,");
-
-    for (int i = 0; i < I; i++) fprintf(ffp, "s_presentposition[%d],", i);
-    for (int i = 0; i < I; i++) fprintf(ffp, "s_presentvelocity[%d],", i);
-    for (int i = 0; i < I; i++) fprintf(ffp, "s_tau_res[%d],", i);
-
-    for (int i = 0; i < I; i++) fprintf(ffp, "m_presentposition[%d],", i);
-    for (int i = 0; i < I; i++) fprintf(ffp, "m_presentvelocity[%d],", i);
-    for (int i = 0; i < I; i++) fprintf(ffp, "m_tau_res[%d],", i);
-
-    for (int i = 0; i < I; i++) fprintf(ffp, "s_goal_torque[%d],", i);
-    for (int i = 0; i < I; i++) fprintf(ffp, "s_tau_dis[%d],", i);
-    for (int i = 0; i < I; i++) fprintf(ffp, "s_dob0[%d],", i);
-    for (int i = 0; i < I; i++) fprintf(ffp, "s_dob1[%d],", i);
-    for (int i = 0; i < I; i++) fprintf(ffp, "s_dob2[%d],", i);
   }
+
+  ffp = fopen(filename.c_str(), "w");
+  fprintf(ffp, "time,");
+
+  int I = JOINT_NUM;
+
+  for (int i = 0; i < I; i++) fprintf(ffp, "theta_res[%d],", i);
+  for (int i = 0; i < I; i++) fprintf(ffp, "omega_res[%d],", i);
+  for (int i = 0; i < I; i++) fprintf(ffp, "tau_res[%d],", i);
+
+  for (int i = 0; i < I; i++) fprintf(ffp, "theta_ref[%d],", i);
+  for (int i = 0; i < I; i++) fprintf(ffp, "omega_ref[%d],", i);
+  for (int i = 0; i < I; i++) fprintf(ffp, "tau_ref[%d],", i);
+
+  for (int i = 0; i < I; i++) fprintf(ffp, "goal_torque[%d],", i);
+  for (int i = 0; i < I; i++) fprintf(ffp, "tau_dis[%d],", i);
+  for (int i = 0; i < I; i++) fprintf(ffp, "dob0[%d],", i);
+  for (int i = 0; i < I; i++) fprintf(ffp, "dob1[%d],", i);
+  for (int i = 0; i < I; i++) fprintf(ffp, "dob2[%d],", i);
 
   fprintf(ffp, "sleeptime,controltime\n");
   //////////////////////////////////////////////
@@ -530,11 +514,11 @@ void CR7::write_csv(double time, long sleep_time, double control_time) {
  * @fn		void position_control()
  * @brief  position control
  */
-void CR7::position_control(double theta_ref[JOINT_NUM]) {
-  pthread_mutex_lock(&mutex);
+void CR7::position_control(double input_theta_ref[JOINT_NUM]) {
+  // pthread_mutex_lock(&mutex);
   for (int i = 0; i < JOINT_NUM; i++) {
     // set target value
-    theta_ref[i] = theta_ref[i];
+    theta_ref[i] = input_theta_ref[i];
     omega_ref[i] = 0.0;
     tau_ref[i] = 0.0;
 
@@ -545,7 +529,7 @@ void CR7::position_control(double theta_ref[JOINT_NUM]) {
       tau_ref[i] = 0.0;
     }
   }
-  pthread_mutex_unlock(&mutex);
+  // pthread_mutex_unlock(&mutex);
 
   controller();
 }
@@ -554,15 +538,15 @@ void CR7::position_control(double theta_ref[JOINT_NUM]) {
  * @fn    void torque_control()
  * @brief position and torque control
  */
-void CR7::torque_control(double theta_ref[JOINT_NUM],
-                         double omega_ref[JOINT_NUM],
-                         double tau_ref[JOINT_NUM]) {
-  pthread_mutex_lock(&mutex);
+void CR7::force_control(double input_theta_ref[JOINT_NUM],
+                        double input_omega_ref[JOINT_NUM],
+                        double input_tau_ref[JOINT_NUM]) {
+  // pthread_mutex_lock(&mutex);
   for (int i = 0; i < JOINT_NUM; i++) {
     // set target value
-    theta_ref[i] = theta_ref[i];
-    omega_ref[i] = omega_ref[i];
-    tau_ref[i] = tau_ref[i];
+    theta_ref[i] = input_theta_ref[i];
+    omega_ref[i] = input_omega_ref[i];
+    tau_ref[i] = input_tau_ref[i];
 
     // disable joint 2
     if (i == 2) {
@@ -571,7 +555,7 @@ void CR7::torque_control(double theta_ref[JOINT_NUM],
       tau_ref[i] = 0.0;
     } 
   }
-  pthread_mutex_unlock(&mutex);
+  // pthread_mutex_unlock(&mutex);
 
   controller();
 }
