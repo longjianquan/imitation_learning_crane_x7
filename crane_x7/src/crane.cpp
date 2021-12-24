@@ -93,25 +93,29 @@ CR7::~CR7() {
 }
 
 int CR7::Readpresent_position(int ID[JOINT_NUM]) {
+  //読み込みのデータを設定(現在角度)
+  for (int i = 0; i < JOINT_NUM2; i++) {
+    dxl_addparam_result = groupBulkRead->addParam(
+        ID[i], THETA_RES_ADDRESS, THETA_RES_DATA_LENGTH);
+  }
+
+  // Bulkread present position
+  dxl_comm_result = groupBulkRead->txRxPacket();  //返信データの読み込み
+  if (dxl_comm_result != COMM_SUCCESS) printf(" discommect \n");
+
+  // Check if groupbulkread data of Dynamixel is available
   for (int i = 0; i < JOINT_NUM2; i++) {  //返信データが利用できるか確認
-    //読み込みのデータを設定(現在角度)
-    dxl_addparam_result = groupBulkRead->addParam(ID[i], THETA_RES_ADDRESS,
-                                                  THETA_RES_DATA_LENGTH);
-
-    // Bulkread present position
-    dxl_comm_result = groupBulkRead->txRxPacket();  //返信データの読み込み
-    if (dxl_comm_result != COMM_SUCCESS) printf(" disconnect \n");
-
-    // Check if groupbulkread data of Dynamixel is available
     dxl_getdata_result = groupBulkRead->isAvailable(ID[i], THETA_RES_ADDRESS,
                                                     THETA_RES_DATA_LENGTH);
-    if (!dxl_getdata_result)
+    if (dxl_getdata_result != true) {
       printf(" ID[%d] : groupBulkRead getdata failed\n", ID[i]);
+    }
+  }
 
-    //返信データから指定のデータを読む
-    dxl_theta_res =
-        groupBulkRead->getData(ID[i], THETA_RES_ADDRESS, THETA_RES_DATA_LENGTH);
-
+  //返信データから指定のデータを読む
+  for (int i = 0; i < JOINT_NUM2; i++) {
+    dxl_theta_res = groupBulkRead->getData(
+      ID[i], THETA_RES_ADDRESS, THETA_RES_DATA_LENGTH);
     theta_res[i] = dxlvalue2rad(dxl_theta_res);
   }
   return 0;
