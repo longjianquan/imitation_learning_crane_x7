@@ -21,7 +21,6 @@
 // limitations under the License.
 
 //// Header files //////
-//
 #include "crane.h"
 
 #include "control_params.h"
@@ -30,50 +29,8 @@
 
 /**
  * @brief コンストラクタ
- */
-// CR7::CR7() {
-//   portHandler = dynamixel::PortHandler::getPortHandler(DEVICENAME);
-//   packetHandler =
-//   dynamixel::PacketHandler::getPacketHandler(PROTOCOL_VERSION);
-//   groupBulkWrite = new dynamixel::GroupBulkWrite(portHandler, packetHandler);
-//   groupBulkRead = new dynamixel::GroupBulkRead(portHandler, packetHandler);
-
-//   dxl_comm_result = COMM_TX_FAIL;  // Communication result
-//   dxl_addparam_result = false;     // addParam result
-//   dxl_getdata_result = false;      // GetParam result
-//   dxl_error = 0;                   // Dynamixel error
-//   datareadflag = 0;
-
-//   dxl_theta_res = {0};
-//   dxl_present_velocity = {0};
-//   dxl_present_torque = {0};
-
-//   for (int i = 0; i < JOINT_NUM; i++) {
-//     theta_res[i] = 0;
-//     present_velocity[i] = 0;
-//     present_torque[i] = 0;
-//     goal_current[i] = 0;
-
-//     theta_ref[i] = 0;
-//     omega_ref[i] = 0;
-//     goal_torque[i] = 0;
-//     tau_ref[i] = 0;
-//     omega_res[i] = 0;
-//     d_theta_temp[i] = 0;
-//     tau_p[i] = 0;
-//     tau_f[i] = 0;
-//     tau_dis[i] = 0;
-//     tau_res[i] = 0;
-
-//     dob0[i] = 0;
-//     dob1[i] = 0;
-//     dob2[i] = 0;
-//   }
-// }
-
-/**
- * @brief コンストラクタ
  * @param devicename デバイス名
+ * @param initial_pose 初期姿勢
  * @param masterorslave マスターなら１　スレーブなら０
  */
 CR7::CR7(const char *devicename, double initial_pose[JOINT_NUM],
@@ -94,29 +51,7 @@ CR7::CR7(const char *devicename, double initial_pose[JOINT_NUM],
   dxl_present_velocity = {0};
   dxl_present_torque = {0};
 
-  for (int i = 0; i < JOINT_NUM; i++) {
-    theta_res[i] = 0;
-    present_velocity[i] = 0;
-    present_torque[i] = 0;
-    goal_current[i] = 0;
-
-    theta_ref[i] = initial_pose[i];
-    omega_ref[i] = 0;
-    tau_ref[i] = 0;
-
-    goal_torque[i] = 0;
-
-    omega_res[i] = 0;
-    d_theta_temp[i] = 0;
-    // tau_p[i] = 0;
-    // tau_f[i] = 0;
-    tau_dis[i] = 0;
-    tau_res[i] = 0;
-
-    dob0[i] = 0;
-    dob1[i] = 0;
-    dob2[i] = 0;
-  }
+  for (int i = 0; i < JOINT_NUM; i++) theta_ref[i] = initial_pose[i];
 
   /////////////////// csv //////////////////////
   if (ms == 0) {
@@ -146,6 +81,15 @@ CR7::CR7(const char *devicename, double initial_pose[JOINT_NUM],
 
   fprintf(ffp, "sleeptime,controltime\n");
   //////////////////////////////////////////////
+}
+
+/**
+ * @brief デストラクタ
+ */
+CR7::~CR7() {
+  Close_port();
+  fclose(ffp);
+  printf("finish CR7\n");
 }
 
 int CR7::Readpresent_position(int ID[JOINT_NUM]) {

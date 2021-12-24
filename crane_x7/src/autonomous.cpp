@@ -31,7 +31,6 @@ void *autonomous_control(void *) {
   long sleep_time_s;
   struct timeval start_time_s;
   struct timeval end_time_s;
-  bool finishFlag = false;
 
   static double ts = 0.002;
   int rnn_ts = 20;
@@ -48,7 +47,6 @@ void *autonomous_control(void *) {
   char rbuf[4096];
 
   int l;
-  // int ret;
   bool sendf = true;
   char *tp;
   fd_set fds, fdw, fdr;
@@ -98,7 +96,11 @@ void *autonomous_control(void *) {
   for (int j = 0; j < JOINT_NUM2; j++)
     crane_s.d_theta_temp[j] = crane_s.theta_res[j];
 
+  /***************************************************************************
+   *                              main loop
+   ***************************************************************************/
   while (true) {
+    // start time
     gettimeofday(&start_time_s, NULL);
 
     // position observation
@@ -112,6 +114,7 @@ void *autonomous_control(void *) {
     }
 
     // forced termination
+    bool finishFlag = false;
     for (int i = 0; i < JOINT_NUM2; i++) {
       if (crane_s.theta_res[i] == 0.0) {
         cout << "読み込み怪しいので終了" << endl;
@@ -125,32 +128,26 @@ void *autonomous_control(void *) {
     }
     if (finishFlag) break;
 
-    // move to initial pose
-    if (ch == 'p') {
+    // action
+    if (ch == 'p') {  // move to initial pose
       crane_s.position_control(goal_pose);
 
-      // autonomous control
-    } else if (ch == 'b') {
+    } else if (ch == 'b') {  // autonomous control
       memcpy(&fdw, &fds, sizeof(fd_set));
       memcpy(&fdr, &fds, sizeof(fd_set));
 
       // はじめから6秒経つまで通信はとりあえず行わないようにしている
       // socket
       if (time >= 2.0) {
-        // ret = select(sock + 1, &fdr, &fdw, NULL, NULL);
-
         if (count % rnn_ts == 0) {
           if (FD_ISSET(sock, &fdw) && sendf == true) {
             string str = "";
             int I = JOINT_NUM;
             for (int i = 0; i < I; i++)
-              // dprintf(sock, "%5.4f ", crane_s.theta_res[i]);
               str += to_string(crane_s.theta_res[i]) + ",";
             for (int i = 0; i < I; i++)
-              // dprintf(sock, "%5.4f ", crane_s.omega_res[i]);
               str += to_string(crane_s.omega_res[i]) + ",";
             for (int i = 0; i < I; i++)
-              // dprintf(sock, "%5.4f ", crane_s.tau_res[i]);
               str += to_string(crane_s.tau_res[i]) + ",";
             str += to_string(time);
             dprintf(sock, "%s", str.c_str());
@@ -206,13 +203,17 @@ void *autonomous_control(void *) {
         crane_s.force_control(theta_ref, omega_ref, tau_ref);
       }
 
-      // finish
-    } else {
+    } else {  // finish
       break;
     }
 
-    // calculate sleep time
+    // 1000サンプリングなので、2秒
+    if (count == 1000) ch = 'b';
+
+    // end time
     gettimeofday(&end_time_s, NULL);
+
+    // calculate sleep time
     control_time_s = (end_time_s.tv_sec - start_time_s.tv_sec +
                       (end_time_s.tv_usec - start_time_s.tv_usec) * 0.000001);
     sleep_time_s = LOOPTIME - (long)(control_time_s * 1000000.0);
@@ -221,18 +222,14 @@ void *autonomous_control(void *) {
     // write current state to csv
     crane_s.write_csv(time, sleep_time_s, control_time_s);
 
-    usleep(sleep_time_s);
-
-    // 1000サンプリングなので、2秒
-    if (count == 1000) ch = 'b';
-
     // print
     printf("mode: %c  time: %lf\n", ch, time);
 
+    // sleep
+    usleep(sleep_time_s);
+
     // time count
-    if (ch == 'b') {
-      time += ts;
-    }
+    if (ch == 'b') time += ts;
     count++;
   }
 
@@ -247,11 +244,12 @@ void *autonomous_control(void *) {
   crane_s.Move_Theta_Ref(finish_pose, ID, JOINT_MIN, JOINT_MAX);
   sleep(5);
 
+  // Torque off
+  crane_s.Disable_Dynamixel_Torque(ID);
+
+  // finish socket communication
   dprintf(sock, "%s", "**");
   close(sock);
-  crane_s.Disable_Dynamixel_Torque(ID);
-  crane_s.Close_port();
-  fclose(crane_s.ffp);
 
   return NULL;
 }

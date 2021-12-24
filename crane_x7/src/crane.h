@@ -61,10 +61,12 @@ class CR7 {
   // 複数サーボの読み込み用関数の呼び出し(Dynamixel SDK)
   dynamixel::GroupBulkRead *groupBulkRead;
 
-  CR7();  //コンストラクタ
+  //コンストラクタ
   CR7(const char *devicename, double initial_pose[JOINT_NUM],
       int masterorslave);
-  ~CR7() { printf("finish CR7\n"); }
+
+  //デストラクタ
+  ~CR7();
 
   int ms;
 
@@ -83,35 +85,31 @@ class CR7 {
   int16_t dxl_present_torque;       //サーボの現在位置取得用の変数
   int16_t goal_current[JOINT_NUM];  // = {0,0,0,0,0,0,0,0};
 
-  double theta_res[JOINT_NUM];
-  double present_velocity[JOINT_NUM];
-  double present_torque[JOINT_NUM];
-  double omega_res[JOINT_NUM];
-  double tau_res[JOINT_NUM];
+  // response
+  double theta_res[JOINT_NUM] = {0};
+  double present_velocity[JOINT_NUM] = {0};
+  double present_torque[JOINT_NUM] = {0};
+  double omega_res[JOINT_NUM] = {0};
+  double tau_res[JOINT_NUM] = {0};
 
-  double theta_ref[JOINT_NUM];
-  double omega_ref[JOINT_NUM];
-  double tau_ref[JOINT_NUM];
+  // refarence
+  double theta_ref[JOINT_NUM] = {0};
+  double omega_ref[JOINT_NUM] = {0};
+  double tau_ref[JOINT_NUM] = {0};
 
-  double goal_torque[JOINT_NUM];
+  double goal_torque[JOINT_NUM] = {0};
 
-  double d_theta_temp[JOINT_NUM];
-//   double tau_p[JOINT_NUM];
-//   double tau_f[JOINT_NUM];
-  double tau_dis[JOINT_NUM];
+  double d_theta_temp[JOINT_NUM] = {0};
 
-  double dob0[JOINT_NUM];
-  double dob1[JOINT_NUM];
-  double dob2[JOINT_NUM];
+  // DOB
+  double dob0[JOINT_NUM] = {0};
+  double dob1[JOINT_NUM] = {0};
+  double dob2[JOINT_NUM] = {0};
+  double tau_dis[JOINT_NUM] = {0};
 
   FILE *ffp;
-  // const char *fname;
   std::string filename;
   int datareadflag;
-
-  //　play back用テキストデータの定義
-  // FILE *fp;
-  // const char *fname = "data.txt";
 
   bool Open_port();                                 // 通信ポートを開く
   bool Set_port_baudrate();                         // 通信レートの設定
@@ -129,12 +127,9 @@ class CR7 {
   int Readpresent_position(int ID[JOINT_NUM]);
   int Readpresent_velocity(int ID[JOINT_NUM]);
   int Readpresent_torque(int ID[JOINT_NUM]);
-  // int getCranex7JointState();
 
-  int setCranex7Torque(double *torque_array);  // FILE
+  int setCranex7Torque(double *torque_array);
   bool Setoperation(int Operationmode, int ID[JOINT_NUM]);
-  // int positioncontrol(FILE *fp);
-  // void *bilateralcontrol(void *);
 
   void write_csv(double time, long sleep_time, double control_time);
   void position_control(double theta_ref[JOINT_NUM]);

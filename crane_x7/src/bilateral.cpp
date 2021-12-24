@@ -30,7 +30,6 @@ void *bilateral_control(CR7 *crane_s, CR7 *crane_m, bool slave) {
   long sleep_time_s;
   struct timeval start_time_s;
   struct timeval end_time_s;
-  bool finishFlag = false;
   int count = 0;
   static double ts = 0.002;
   static double time = 0.0;
@@ -60,7 +59,11 @@ void *bilateral_control(CR7 *crane_s, CR7 *crane_m, bool slave) {
   for (int j = 0; j < JOINT_NUM2; j++)
     crane_s->d_theta_temp[j] = crane_s->theta_res[j];
 
+  /***************************************************************************
+   *                              main loop
+   ***************************************************************************/
   while (true) {
+    // start time
     gettimeofday(&start_time_s, NULL);
 
     // position observation
@@ -74,6 +77,7 @@ void *bilateral_control(CR7 *crane_s, CR7 *crane_m, bool slave) {
     }
 
     // forced termination
+    bool finishFlag = false;
     for (int i = 0; i < JOINT_NUM2; i++) {
       if (crane_s->theta_res[i] == 0.0) {
         cout << (slave ? "slave" : "master");
@@ -89,25 +93,22 @@ void *bilateral_control(CR7 *crane_s, CR7 *crane_m, bool slave) {
     }
     if (finishFlag) break;
 
-    // move to initial pose
-    if (ch == 'p') {
+    // action
+    if (ch == 'p') {  // move to initial pose
       crane_s->position_control(goal_pose);
 
-      // bilateral control
-    } else if (ch == 'b') {
+    } else if (ch == 'b') {  // bilateral control
       crane_s->force_control(crane_m->theta_res, crane_m->omega_res,
                              crane_m->tau_res);
 
-      // finish
-    } else {
+    } else {  // finish
       break;
     }
 
-    // print
-    if (slave && (count % 10) == 0) printf("mode: %c  time: %lf\n", ch, time);
+    // end time
+    gettimeofday(&end_time_s, NULL);
 
     // calculate sleep time
-    gettimeofday(&end_time_s, NULL);
     control_time_s = (end_time_s.tv_sec - start_time_s.tv_sec +
                       (end_time_s.tv_usec - start_time_s.tv_usec) * 0.000001);
     sleep_time_s = LOOPTIME - (long)(control_time_s * 1000000.0);
@@ -116,13 +117,15 @@ void *bilateral_control(CR7 *crane_s, CR7 *crane_m, bool slave) {
     // write current state to csv
     crane_s->write_csv(time, sleep_time_s, control_time_s);
 
+    // print
+    if (slave && (count % 10) == 0) printf("mode: %c  time: %lf\n", ch, time);
+
+    // sleep
     usleep(sleep_time_s);
 
     // time count
-    if (ch == 'b') {
-      time += ts;
-      count++;
-    }
+    if (ch == 'b') time += ts;
+    count++;
   }
 
   // position control mode
@@ -136,9 +139,9 @@ void *bilateral_control(CR7 *crane_s, CR7 *crane_m, bool slave) {
   crane_s->Move_Theta_Ref(finish_pose, ID, JOINT_MIN, JOINT_MAX);
   sleep(5);
 
+  // Torque off
   crane_s->Disable_Dynamixel_Torque(ID);
-  crane_s->Close_port();
-  fclose(crane_s->ffp);
+
   return NULL;
 }
 
@@ -190,11 +193,13 @@ int main() {
     fprintf(stderr, "cannot create control thread\n");
     return 1;
   }
+
   // スレーブ制御のスレッド設定
   if (pthread_create(&slave_thread, NULL, &slave_control, NULL) != 0) {
     fprintf(stderr, "cannot create control thread\n");
     return 1;
   }
+
   // キーボード入力監視のスレッド設定
   if (pthread_create(&getch_thread, NULL, &keyboard_check, NULL) != 0) {
     fprintf(stderr, "cannot create control thread\n");
