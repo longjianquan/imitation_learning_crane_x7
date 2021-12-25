@@ -136,7 +136,7 @@ void *autonomous_control(void *) {
     memcpy(&fdr, &fds, sizeof(fd_set));
     if (time >= 2.0) {
       // change mode to autonomous control
-      if (count == 500 * 2) ch = 'b';
+      ch = 'b';
 
       if (count % rnn_ts == 0) {  // send
         if (FD_ISSET(sock, &fdw) && sendf == true) {
@@ -150,17 +150,9 @@ void *autonomous_control(void *) {
             str += to_string(crane_s.tau_res[i]) + ",";
           str += to_string(time);
           dprintf(sock, "%s", str.c_str());
-          printf("%s", str.c_str());
 
-          // C++→pythonに送ったものを表示して確認
-          // printf("\nsend");
-          // printf("\ntheta_res: ");
-          // for (int i = 0; i < I; i++) printf("%5.4f ", crane_s.theta_res[i]);
-          // printf("\nomega_res: ");
-          // for (int i = 0; i < I; i++) printf("%5.4f ", crane_s.omega_res[i]);
-          // printf("\ntau_res  : ");
-          // for (int i = 0; i < I; i++) printf("%5.4f ", crane_s.tau_res[i]);
-          // printf("\npasstime : %5.4f\n\n", time);
+          printf("\nsend");
+          printf("%s", str.c_str());
 
           sendf = false;
         }
@@ -171,9 +163,10 @@ void *autonomous_control(void *) {
 
           printf("receive\n");
           printf("-> %s\n", rbuf);
-          sendf = true;
-          tp = strtok(rbuf, ",");
 
+          sendf = true;
+
+          tp = strtok(rbuf, ",");
           if (tp == NULL) {
             cout << "receive error\n" << endl;
             break;
