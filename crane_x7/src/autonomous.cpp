@@ -41,7 +41,6 @@ void *autonomous_control(void *) {
   const char *devicename1 = "/dev/ttyUSB0";
 
   // socket communication
-  double a[24];
   struct sockaddr_in addr;
 
   char rbuf[4096];
@@ -50,6 +49,10 @@ void *autonomous_control(void *) {
   bool sendf = true;
   char *tp;
   fd_set fds, fdw, fdr;
+
+  double theta_ref[JOINT_NUM2] = {0.0};
+  double omega_ref[JOINT_NUM2] = {0.0};
+  double tau_ref[JOINT_NUM2] = {0.0};
 
   ///// socket /////
   sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -128,87 +131,73 @@ void *autonomous_control(void *) {
     }
     if (finishFlag) break;
 
+    // socket communication
+    memcpy(&fdw, &fds, sizeof(fd_set));
+    memcpy(&fdr, &fds, sizeof(fd_set));
+    if (count >= 1000 && ch != 'q') {
+      // change mode to autonomous control
+      ch = 'b';
+
+      if (count % rnn_ts == 0) {  // send
+        if (FD_ISSET(sock, &fdw) && sendf == true) {
+          string str = "";
+          int I = JOINT_NUM;
+          for (int i = 0; i < I; i++)
+            str += to_string(crane_s.theta_res[i]) + ",";
+          for (int i = 0; i < I; i++)
+            str += to_string(crane_s.omega_res[i]) + ",";
+          for (int i = 0; i < I; i++)
+            str += to_string(crane_s.tau_res[i]) + ",";
+          str += to_string(time);
+          dprintf(sock, "%s", str.c_str());
+
+          printf("\nsend");
+          printf("%s", str.c_str());
+
+          sendf = false;
+        }
+      } else if ((count + 1) % rnn_ts == 0) {  // receive
+        if (FD_ISSET(sock, &fdr) && sendf == false) {
+          l = recv(sock, rbuf, sizeof(rbuf), 0);
+          *(rbuf + l) = 0;
+
+          printf("receive\n");
+          printf("-> %s\n", rbuf);
+
+          sendf = true;
+
+          tp = strtok(rbuf, ",");
+          if (tp == NULL) {
+            cout << "receive error\n" << endl;
+            break;
+          }
+
+          double a[24] = {0};
+          for (int l = 0; l < 24; l++) {
+            a[l] = atof(tp);
+            printf("a[%d] = %5.4f\n", l, a[l]);
+            tp = strtok(NULL, ",");
+          }
+
+          for (int i = 0; i < JOINT_NUM2; i++) {
+            theta_ref[i] = a[i];
+            omega_ref[i] = a[i + JOINT_NUM2 * 1];
+            tau_ref[i] = a[i + JOINT_NUM2 * 2];
+          }
+        }
+      }
+    }
+
     // action
-    if (ch == 'p') {  // move to initial pose
+    if (ch == 'p' || time < 2.0) {  // move to initial pose
       crane_s.position_control(goal_pose);
 
     } else if (ch == 'b') {  // autonomous control
-      memcpy(&fdw, &fds, sizeof(fd_set));
-      memcpy(&fdr, &fds, sizeof(fd_set));
-
-      // はじめから6秒経つまで通信はとりあえず行わないようにしている
-      // socket
-      if (time >= 2.0) {
-        if (count % rnn_ts == 0) {
-          if (FD_ISSET(sock, &fdw) && sendf == true) {
-            string str = "";
-            int I = JOINT_NUM;
-            for (int i = 0; i < I; i++)
-              str += to_string(crane_s.theta_res[i]) + ",";
-            for (int i = 0; i < I; i++)
-              str += to_string(crane_s.omega_res[i]) + ",";
-            for (int i = 0; i < I; i++)
-              str += to_string(crane_s.tau_res[i]) + ",";
-            str += to_string(time);
-            dprintf(sock, "%s", str.c_str());
-            printf("%s", str.c_str());
-
-            // C++→pythonに送ったものを表示して確認
-            printf("\nsend");
-            printf("\ntheta_res: ");
-            for (int i = 0; i < I; i++) printf("%5.4f ", crane_s.theta_res[i]);
-            printf("\nomega_res: ");
-            for (int i = 0; i < I; i++) printf("%5.4f ", crane_s.omega_res[i]);
-            printf("\ntau_res  : ");
-            for (int i = 0; i < I; i++) printf("%5.4f ", crane_s.tau_res[i]);
-            printf("\npasstime : %5.4f\n\n", time);
-            sendf = false;
-          }
-        } else if ((count + 1) % rnn_ts == 0) {
-          if (FD_ISSET(sock, &fdr) && sendf == false) {
-            l = recv(sock, rbuf, sizeof(rbuf), 0);
-            *(rbuf + l) = 0;
-
-            printf("receive\n");
-            printf("-> %s\n", rbuf);
-            sendf = true;
-            tp = strtok(rbuf, ",");
-
-            if (tp == NULL) {
-              cout << "receive error\n" << endl;
-              break;
-            }
-
-            for (int l = 0; l < 21; l++) {
-              a[l] = atof(tp);
-              printf("a[%d] = %5.4f\n", l, a[l]);
-              tp = strtok(NULL, ",");
-            }
-          }
-        }
-      }
-
-      // 4.2     通信始めてからLSTMがなれるまでマージンとってる
-      if (time <= 4.3) {
-        crane_s.position_control(goal_pose);
-      } else {
-        double theta_ref[JOINT_NUM2] = {0.0};
-        double omega_ref[JOINT_NUM2] = {0.0};
-        double tau_ref[JOINT_NUM2] = {0.0};
-        for (int i = 0; i < JOINT_NUM2; i++) {
-          theta_ref[i] = a[i];
-          omega_ref[i] = a[i + JOINT_NUM2 * 1];
-          tau_ref[i] = a[i + JOINT_NUM2 * 2];
-        }
-        crane_s.force_control(theta_ref, omega_ref, tau_ref);
-      }
+      crane_s.force_control(theta_ref, omega_ref, tau_ref);
 
     } else {  // finish
       break;
     }
-
-    // 1000サンプリングなので、2秒
-    if (count == 1000) ch = 'b';
 
     // end time
     gettimeofday(&end_time_s, NULL);

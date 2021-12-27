@@ -22,7 +22,7 @@ static double finish_pose[JOINT_NUM] = {
 
 // サーボのトルク制御モードでの速度リミットの設定
 // static double LIMIT_SPEED[JOINT_NUM] = {3.0, 2.0, 2.0, 2.5, 4.5, 4.5, 8.0, 8.0};
-static double LIMIT_SPEED[JOINT_NUM] = {6.0, 6.0, 2.0, 6.0, 8.0, 8.0, 8.0, 8.0};
+static double LIMIT_SPEED[JOINT_NUM] = {6.0, 6.0, 2.0, 6.0, 8.0, 8.0, 20.0, 20.0};
 
 // cat off frequency
 static double g[JOINT_NUM] = {15, 15, 20, 20, 20, 20, 20, 20};
