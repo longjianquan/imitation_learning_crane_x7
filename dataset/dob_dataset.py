@@ -9,10 +9,11 @@ import re
 
 
 class DOBDataset(Dataset):
-    def __init__(self,
+    def __init__(
+        self,
         datafolder: str,
         train: bool = True,
-        split_ratio: float = 0.8,
+        split_ratio: float = 0.5,
     ):
         self.train = train
 
@@ -31,25 +32,33 @@ class DOBDataset(Dataset):
             col_names = []
             col_names += [f's_presentposition[{i}]' for i in range(8)]
             col_names += [f's_presentvelocity[{i}]' for i in range(8)]
-            col_names += [f's_tau_res[{i}]' for i in range(8)]
+            # col_names += [f's_tau_res[{i}]' for i in range(8)]
             x = torch.tensor(np.array(df.loc[:, col_names]))
             x = x[1:]
             x_list.append(x)
 
-            y_col_names = [f's_goal_torque[{i}]' for i in range(8)]
+            # y_col_names = [f's_goal_torque[{i}]' for i in range(8)]
+            y_col_names = [f's_tau_dis[{i}]' for i in range(8)]
             y = torch.tensor(np.array(df.loc[:, y_col_names]))
             y = y[:-1]
             y_list.append(y)
 
-        self.x = torch.cat(x_list)
-        self.y = torch.cat(y_list)
+        x = torch.cat(x_list)
+        y = torch.cat(y_list)
+
+        if self.train:
+            self.x = x[:int(split_ratio * len(x))]
+            self.y = y[:int(split_ratio * len(y))]
+        else:
+            self.x = x[int(split_ratio * len(x)):]
+            self.y = y[int(split_ratio * len(y)):]
 
         print('x shape:', self.x.shape)
         print('y shape:', self.y.shape)
         print('x data size: {} [MiB]'.format(
-            self.x.detach().numpy().copy().__sizeof__()/1.049e+6))
+            self.x.detach().numpy().copy().__sizeof__() / 1.049e+6))
         print('y data size: {} [MiB]'.format(
-            self.y.detach().numpy().copy().__sizeof__()/1.049e+6))
+            self.y.detach().numpy().copy().__sizeof__() / 1.049e+6))
 
     def __len__(self):
         return len(self.x)
