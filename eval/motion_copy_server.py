@@ -25,12 +25,11 @@ class MotionCopyServer(SocketServer):
         df = df.set_index('time')
 
         col_names = []
-        col_names += [f'm_presentposition[{i}]' for i in range(8)]
-        col_names += [f'm_presentvelocity[{i}]' for i in range(8)]
-        col_names += [f'm_tau_res[{i}]' for i in range(8)]
+        col_names += [f'theta_ref[{i}]' for i in range(8)]
+        col_names += [f'omega_ref[{i}]' for i in range(8)]
+        col_names += [f'tau_ref[{i}]' for i in range(8)]
 
         self.motion_data = df.loc[::20, col_names]
-
 
         print('motion_data:', self.motion_data.shape)
 
@@ -44,9 +43,11 @@ class MotionCopyServer(SocketServer):
         # data = np.fromstring(msg, dtype=np.float32 , sep=' ')
         state_hat = np.array(self.motion_data.iloc[self.count])
         print('state_hat:', state_hat)
+
         # temporary
-        state_hat = np.delete(state_hat, [2, 10, 18])
-        print('state_hat:', state_hat)
+        # state_hat = np.delete(state_hat, [2, 10, 18])
+        # print('state_hat:', state_hat)
+        
         print(f'{self.count} / {self.motion_data.shape[0] - 1}')
 
         if self.count < self.motion_data.shape[0] - 1:
