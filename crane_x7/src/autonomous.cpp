@@ -134,7 +134,7 @@ void *autonomous_control(void *) {
     // socket communication
     memcpy(&fdw, &fds, sizeof(fd_set));
     memcpy(&fdr, &fds, sizeof(fd_set));
-    if (time >= 2.0) {
+    if (count >= 1000 && ch != 'q') {
       // change mode to autonomous control
       ch = 'b';
 
@@ -189,7 +189,7 @@ void *autonomous_control(void *) {
     }
 
     // action
-    if (ch == 'p') {  // move to initial pose
+    if (ch == 'p' || time < 2.0) {  // move to initial pose
       crane_s.position_control(goal_pose);
 
     } else if (ch == 'b') {  // autonomous control
