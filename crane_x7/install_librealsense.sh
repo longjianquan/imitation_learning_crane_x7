@@ -7,7 +7,8 @@ git clone https://github.com/IntelRealSense/librealsense
 cd librealsense
 ./scripts/setup_udev_rules.sh
 # ./scripts/patch-ubuntu-kernel-ubuntu-lts.sh
-mkdir build & cd build
+mkdir build
+cd build
 cmake .. -DBUILD_EXAMPLES=true
 make
 sudo make install
