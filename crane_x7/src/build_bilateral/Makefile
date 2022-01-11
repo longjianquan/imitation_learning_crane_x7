@@ -47,6 +47,13 @@ LIBRARIES  += -ldxl_x64_cpp
 LIBRARIES  += -lrt
 LIBRARIES  += -pthread
 
+# OpenCV
+INCLUDES += -I/usr/local/include/opencv4
+LIBRARIES += -lopencv_core -lopencv_imgcodecs -lopencv_highgui
+
+# librealsense
+LIBRARIES += -lrealsense2
+
 #---------------------------------------------------------------------s
 # Files
 #---------------------------------------------------------------------
@@ -77,7 +84,7 @@ $(DIR_OBJS)/%.o: ../%.c
 	$(CC) $(CCFLAGS) -c $? -o $@
 
 $(DIR_OBJS)/%.o: ../%.cpp
-	$(CX) $(CXFLAGS) -c $? -o $@
+	$(CX) $(CXFLAGS) -c $? -o $@ 
 
 #---------------------------------------------------------------------
 # End of Makefile
