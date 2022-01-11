@@ -12,6 +12,10 @@
 #include <iostream>
 #include <string>
 
+// image
+#include <opencv2/opencv.hpp>
+// #include <librealsense2/rs.hpp>
+
 #include "crane.h"
 #include "crane_x7_comm.h"
 #include "params.h"
@@ -153,8 +157,34 @@ void *master_control(void *) {
   return bilateral_control(&crane_m, &crane_s, false);
 }
 
+void save_image(string fname_color, string fname_depth, int width, int height) {
+  rs2::frameset frames = pipe.wait_for_frames();
+
+  rs2::frame color_frame = frames.get_color_frame();
+  rs2::frame depth_frame = frames.get_depth_frame();
+
+  rs2::frame depth_frame_color = depth_frame.apply_filter(color_map);
+
+  cv::Mat color(cv::Size(width, height), CV_8UC3,
+                (void *)color_frame.get_data(), cv::Mat::AUTO_STEP);
+  cv::Mat depth(cv::Size(width, height), CV_8UC3,
+                (void *)depth_frame_color.get_data(), cv::Mat::AUTO_STEP);
+
+  cv::imwrite(fname_color, color);
+  cv::imwrite(fname_depth, depth);
+}
+
 void *keyboard_check(void *) {
   char key;
+
+  rs2::config cfg;
+  int width = 640;
+  int height = 360;
+  cfg.enable_stream(RS2_STREAM_COLOR, width, height, RS2_FORMAT_BGR8, 30);
+  cfg.enable_stream(RS2_STREAM_DEPTH, width, height, RS2_FORMAT_Z16, 30);
+  rs2::pipeline pipe;
+  pipe.start(cfg);
+  rs2::colorizer color_map;
 
   while (ch != 'q') {
     key = getch();
@@ -162,19 +192,26 @@ void *keyboard_check(void *) {
     // P MODE
     if (key == 'p') {
       ch = 'p';
-      printf("MODE P ACTIVE\n");
+      // printf("MODE P ACTIVE\n");
+      cout << "MODE P ACTIVE\n" << endl;
     }
 
     // B MODE
     if (key == 'b') {
       ch = 'b';
-      printf("MODE B ACTIVE\n");
+      // printf("MODE B ACTIVE\n");
+      cout << "MODE B ACTIVE\n" << endl;
+      save_image("./image/color/color_start.png",
+                 "./image/depth/depth_start.png", width, height);
     }
 
     // Q MODE
     else if (key == 'q') {
       ch = 'q';
-      printf("MODE Q ACTIVE\n");
+      // printf("MODE Q ACTIVE\n");
+      cout << "MODE Q ACTIVE\n" << endl;
+      save_image("./image/color/color_end.png", "./image/depth/depth_end.png",
+                 width, height);
       break;
     }
   }
