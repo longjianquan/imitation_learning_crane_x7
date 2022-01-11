@@ -26,6 +26,19 @@ using namespace std;
 static char ch = 'p';
 int sock;
 
+// サーボの位置制御モードでの動作位置の設定
+static double save_pose[JOINT_NUM] = {
+    // 1.68, 3.14, 3.88, 1.71, 3.14, 3.14, 3.14, 3.49,
+    1.57, 3.14, 3.14, 1.71, 3.14, 3.14, 3.14, 3.14,
+};  // 位置制御モードで一旦行く位置(rad)
+static double goal_pose[JOINT_NUM] = {
+    3.14, 3.14, 3.14, 1.38, 3.14, 3.14, 3.14, 4.0,
+};  // 位置制御モードからトルク制御モードに切り替わる時の位置(rad)
+static double finish_pose[JOINT_NUM] = {
+    // 1.68, 2.81, 3.14, 0.81, 3.16, 3.14, 3.14, 3.49,
+    1.57, 2.81, 3.14, 0.4, 3.16, 3.14, 3.14, 3.14,
+};  // 動作終了時の位置(rad)
+
 void *autonomous_control(void *) {
   double control_time_s;
   long sleep_time_s;
