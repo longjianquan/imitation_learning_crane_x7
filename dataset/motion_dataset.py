@@ -9,7 +9,8 @@ import re
 
 
 class MotionDataset(Dataset):
-    def __init__(self,
+    def __init__(
+        self,
         datafolder: str,
         data_num: int = None,
         train: bool = True,
@@ -19,18 +20,22 @@ class MotionDataset(Dataset):
         self.train = train
 
         state_list = []
+        label_list = []
 
         folders = glob.glob('{}/*'.format(datafolder))
 
         # temporary
-        folders = folders[:1]
+        # folders = folders[:1]
 
-        for folder in folders:
+        for i, folder in enumerate(folders):
             paths = glob.glob('{}/motion/*.csv'.format(folder))
             filenames = [os.path.splitext(os.path.basename(path))[0]
-                for path in paths]
+                         for path in paths]
             filenum = [int(re.sub(r'\D', '', filename))
-                for filename in filenames]
+                       for filename in filenames]
+
+            # reverse
+            filenum.reverse()
 
             train_data_num = int(split_ratio * len(filenum))
             if train:
@@ -50,12 +55,12 @@ class MotionDataset(Dataset):
                 df = df.set_index('time')
 
                 col_names = []
-                col_names += [f's_presentposition[{i}]' for i in range(8)]
-                col_names += [f's_presentvelocity[{i}]' for i in range(8)]
-                col_names += [f's_tau_res[{i}]' for i in range(8)]
-                col_names += [f'm_presentposition[{i}]' for i in range(8)]
-                col_names += [f'm_presentvelocity[{i}]' for i in range(8)]
-                col_names += [f'm_tau_res[{i}]' for i in range(8)]
+                col_names += [f'theta_res[{i}]' for i in range(8)]
+                col_names += [f'omega_res[{i}]' for i in range(8)]
+                col_names += [f'tau_res[{i}]' for i in range(8)]
+                col_names += [f'theta_ref[{i}]' for i in range(8)]
+                col_names += [f'omega_ref[{i}]' for i in range(8)]
+                col_names += [f'tau_ref[{i}]' for i in range(8)]
 
                 # data shaping
                 df = df.loc[:, col_names]
@@ -67,6 +72,7 @@ class MotionDataset(Dataset):
                 # decimation
                 for start in range(skip_num):
                     state_list.append(state[start::skip_num])
+                    label_list.append(i)
 
         # padding
         if max_length is None:
@@ -75,7 +81,7 @@ class MotionDataset(Dataset):
         else:
             self.max_length = max_length
         self.state = torch.stack([self._padding(data_part, self.max_length)
-            for data_part in state_list])
+                                  for data_part in state_list])
 
         # normalization
         # batch_size, steps, _ = self.state_m.shape
@@ -93,7 +99,7 @@ class MotionDataset(Dataset):
 
         print('state shape:', self.state.shape)
         print('state data size: {} [MiB]'.format(
-            self.state.detach().numpy().copy().__sizeof__()/1.049e+6))
+            self.state.detach().numpy().copy().__sizeof__() / 1.049e+6))
 
     def __len__(self):
         return len(self.state)
@@ -133,7 +139,7 @@ class MotionDataset(Dataset):
         return x
 
     def _split_list(self, list, l):
-        return [list[l * idx: l * (idx + 1)] for idx in range(len(list)//l)]
+        return [list[l * idx: l * (idx + 1)] for idx in range(len(list) // l)]
 
     def _normalization(self, x):
         return (x - self.mean) / self.std
