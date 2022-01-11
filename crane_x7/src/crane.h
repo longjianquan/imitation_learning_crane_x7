@@ -30,11 +30,15 @@
 #include <termios.h>
 #include <unistd.h>
 
+#include <string>
+
 #include "dynamixel_sdk.h"
 
 #ifndef JOINT_NUM
 #define JOINT_NUM (8)
 #endif
+
+using namespace std;
 
 /**
  * @brief CRANE-x7 動作用クラス
