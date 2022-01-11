@@ -189,7 +189,7 @@ void *autonomous_control(void *) {
     }
 
     // action
-    if (ch == 'p' || time < 2.0) {  // move to initial pose
+    if (ch == 'p' || time < 1.0) {  // move to initial pose
       crane_s.position_control(goal_pose);
 
     } else if (ch == 'b') {  // autonomous control
@@ -249,9 +249,7 @@ void *keyboard_check(void *) {
   while (ch != 'q') {
     key = getch();
 
-    if (key == 'b') {
-      ch = 'b';
-    } else if (key == 'q') {
+    if (key == 'q') {
       ch = 'q';
       dprintf(sock, "%s", "**");
       close(sock);
